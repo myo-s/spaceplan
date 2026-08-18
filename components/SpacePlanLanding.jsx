@@ -5,20 +5,14 @@
  * into a CSS Module or rewrite it as Tailwind - `html,body{height:100%}` has to
  * stay global or the "fits on one screen" behaviour breaks.
  *
- * Fonts: React 19 / Next 15 hoists these <link> tags into <head>. On an older
- * setup, move them to app/layout.tsx instead.
+ * Fonts (Archivo + Archivo Narrow) are loaded once in app/layout.jsx, so every
+ * page shares them.
  *
  * No client JS - the card hover is pure CSS, so this stays a server component.
  */
 export default function SpacePlanLanding() {
   return (
     <>
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-      <link
-        href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Archivo+Narrow:wght@400;500;600;700&display=swap"
-        rel="stylesheet"
-      />
       <style>{`
   *{margin:0;padding:0;box-sizing:border-box;}
   :root{--cream:#F0EAD8;--gold:#D2BF81;--sage:#99ABA6;--ink:#2B2B2B;
