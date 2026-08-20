@@ -1,22 +1,27 @@
 "use client";
 
 /**
- * SPACE PLAN — Moving In, step 02: the furniture.
+ * SPACE PLAN — Moving In, step 02: your furniture, in the place you live now.
  *
- * The screen answers one question and puts everything else second: WILL IT GO
- * IN THE NEW PLACE? So there is only one plan on screen — the new one — and
- * the left column is simply the list of what you own. You never redraw the old
- * flat, because the old flat is not in question.
+ * This screen used to draw the NEW home and ask you to fill it, which put the
+ * answer before the question: once a sofa has been placed in the new living
+ * room, "will the sofa fit?" has already been answered by the act of placing
+ * it. So step 02 is not a test any more. It is a RECORD.
  *
- * Anything that cannot be made to stand on the new floor stays in the list,
- * drawn in SAGE — the marketplace colour. That is not decoration: a piece that
- * does not fit is a piece somebody nearby wants, and the colour is the app's
- * whole argument in one move.
+ * You lay your furniture out in the flat you are standing in — which you can
+ * do from memory, because you can see it — and everything fits by definition,
+ * because it is already there. Step 03 then takes that record and moves it
+ * into the new place, which is where the real question lives.
+ *
+ * A side effect worth having: the current-place plan drawn in step 01 stops
+ * being decoration and starts doing work.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RoomLayer, { PLAN_CSS } from "./RoomLayer";
-import { FURNITURE, CATALOGUE, elevationSvg } from "../lib/furniture";
+import { FURNITURE } from "../lib/furniture";
+import Catalogue, { CATALOGUE_CSS } from "./Catalogue";
+import { FlipGrip, RotateGrip, ViewTools, useCanvasView } from "./canvasView";
 import {
   clamp, fmtArea, fmtLen, homeArea, homeBox, inputLen, migrateRoom,
   nudgeStep, parseLen, snap,
@@ -27,33 +32,35 @@ import {
 } from "../lib/furnish";
 
 const STORE = "spaceplan.plan.v4";
-const ASPECT = 0.7;
-const MIN_VIEW = 220;
-const MAX_VIEW = 4000;
-const DEFAULT_VIEW = { x: -60, y: -60, w: 940 };
 const HANDLE_PX = 9;
 
+/**
+ * FOUR STEPS, and they name the SITUATION rather than the controls. Earlier
+ * attempts called step 03 "What fits", then "The verdict", then "Keep, sell,
+ * buy" — each one a truer description of the buttons on the screen and each
+ * one further from what a person is actually doing there.
+ *
+ * CURRENT PLACE and NEW PLACE are the two words the whole app turns on. Step
+ * 01 draws them side by side and hands them over; step 02 takes the first,
+ * step 03 plans the second, step 04 is what you decided. Note that "plan" only
+ * appears twice and means the same thing both times — an earlier set had a
+ * "New place plan" next to a "Final plan" where the first meant a drawing and
+ * the second meant a decision.
+ */
 const STEPS = [
-  { label: "Rooms", href: "/draw-room" },
-  { label: "Furniture", href: "/furniture" },
-  { label: "What fits", href: null },
-  { label: "Keep / Sell / Toss", href: null },
-  { label: "Preview", href: null },
+  { label: "Compare spaces", href: "/draw-room" },
+  { label: "Current place", href: "/furniture" },
+  { label: "Plan new place", href: "/what-fits" },
+  { label: "Final plan", href: "/plan" },
 ];
 
 export default function Furnish() {
   const [plan, setPlan] = useState(null);
   const [selId, setSelId] = useState(null);
   const [drag, setDrag] = useState(null);
-  const [view, setView] = useState(DEFAULT_VIEW);
-  const [panMode, setPanMode] = useState(false);
-  const [boxPx, setBoxPx] = useState(700);
-  const boxRef = useRef(null);
-  const svgRef = useRef(null);
+  const v = useCanvasView();
   const dragRef = useRef(null);
-  const viewRef = useRef(view);
   dragRef.current = drag;
-  viewRef.current = view;
 
   /* ---------------------------------------------------------- persistence */
   useEffect(() => {
@@ -61,15 +68,15 @@ export default function Furnish() {
     try {
       const raw = window.localStorage.getItem(STORE);
       if (raw) {
-        const s = JSON.parse(raw);
-        if (s?.homes?.next?.rooms) {
+        const saved = JSON.parse(raw);
+        if (saved?.homes?.current?.rooms) {
           next = {
-            ...s,
+            ...saved,
             homes: {
-              current: { rooms: (s.homes.current?.rooms || []).map(migrateRoom) },
-              next: { rooms: (s.homes.next?.rooms || []).map(migrateRoom) },
+              current: { rooms: (saved.homes.current?.rooms || []).map(migrateRoom) },
+              next: { rooms: (saved.homes.next?.rooms || []).map(migrateRoom) },
             },
-            inventory: s.inventory || [],
+            inventory: saved.inventory || [],
           };
         }
       }
@@ -84,55 +91,22 @@ export default function Furnish() {
     } catch {}
   }, [plan]);
 
-  useEffect(() => {
-    const el = boxRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(([e]) => setBoxPx(Math.max(240, e.contentRect.width || 700)));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [plan]);
-
-  const rooms = plan?.homes.next.rooms || [];
-  const items = plan?.inventory || [];
+  const rooms = plan?.homes.current.rooms || [];
+  /* Furniture you are only PLANNING to buy lives in the same inventory, because
+     step 03 needs both in one list — but it has no business here. This screen
+     records the room you are standing in, and a footstool you have not bought
+     is not standing in it. It was being counted, drawn and listed as owned. */
+  const items = (plan?.inventory || []).filter((i) => !i.wish);
   const unit = plan?.unit || "cm";
-  const pxPerCm = boxPx / view.w;
-  const vb = [view.x, view.y, view.w, view.w * ASPECT];
-  const u = 1 / Math.max(pxPerCm, 0.001);
-
-  const fitView = useCallback((rs) => {
-    const box = homeBox(rs);
-    if (!box.w || !box.d) return setView(DEFAULT_VIEW);
-    const w = clamp(Math.max(box.w, box.d / ASPECT) * 1.18, MIN_VIEW, MAX_VIEW);
-    setView({ x: box.x + box.w / 2 - w / 2, y: box.y + box.d / 2 - (w * ASPECT) / 2, w });
-  }, []);
+  const { vb, pxPerCm, u } = v;
 
   // frame the new place the first time it is seen
   const framed = useRef(false);
   useEffect(() => {
     if (framed.current || !rooms.length) return;
     framed.current = true;
-    fitView(rooms);
-  }, [rooms, fitView]);
-
-  const zoomAt = useCallback((factor, fx = 0.5, fy = 0.5) => {
-    setView((v) => {
-      const w = clamp(v.w * factor, MIN_VIEW, MAX_VIEW);
-      if (w === v.w) return v;
-      return { x: v.x + (v.w - w) * fx, y: v.y + (v.w * ASPECT - w * ASPECT) * fy, w };
-    });
-  }, []);
-
-  useEffect(() => {
-    const el = svgRef.current;
-    if (!el) return;
-    const onWheel = (e) => {
-      e.preventDefault();
-      const r = el.getBoundingClientRect();
-      zoomAt(e.deltaY > 0 ? 1.12 : 1 / 1.12, (e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height);
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [zoomAt, plan]);
+    v.fitTo(rooms);
+  }, [rooms, v]);
 
   /* -------------------------------------------------------------- edits */
   const setItems = useCallback((fn) => {
@@ -174,27 +148,18 @@ export default function Furnish() {
   };
 
   /* ------------------------------------------------------------ dragging */
-  const toCm = (ev) => {
-    const svg = svgRef.current;
-    const r = svg.getBoundingClientRect();
-    return {
-      x: vb[0] + ((ev.clientX - r.left) / r.width) * vb[2],
-      y: vb[1] + ((ev.clientY - r.top) / r.height) * vb[3],
-    };
-  };
-
   const startDrag = (e, info) => {
     e.stopPropagation();
     e.preventDefault();
-    const pt = toCm(e);
-    const wantsPan = info.mode === "sheet" && (panMode || e.button === 1 || e.shiftKey);
+    const pt = v.toCm(e);
+    const wantsPan = info.mode === "sheet" && (e.button === 1 || e.shiftKey);
     if (info.mode === "sheet" && !wantsPan) return setSelId(null);
     if (info.mode === "item") setSelId(info.id);
     setDrag({
       ...info,
       mode: wantsPan ? "pan" : info.mode,
       start: pt,
-      view0: viewRef.current,
+      view0: v.view,
       clientX0: e.clientX,
       clientY0: e.clientY,
     });
@@ -206,9 +171,9 @@ export default function Furnish() {
       const d = dragRef.current;
       if (!d) return;
       if (d.mode === "pan") {
-        const r = svgRef.current.getBoundingClientRect();
+        const r = v.svgRef.current.getBoundingClientRect();
         const perPx = d.view0.w / r.width;
-        setView({
+        v.setView({
           x: d.view0.x - (ev.clientX - d.clientX0) * perPx,
           y: d.view0.y - (ev.clientY - d.clientY0) * perPx,
           w: d.view0.w,
@@ -216,7 +181,7 @@ export default function Furnish() {
         return;
       }
       if (d.mode !== "item") return;
-      const pt = toCm(ev);
+      const pt = v.toCm(ev);
       const it = items.find((i) => i.id === d.id);
       if (!it) return;
       const f = footprint(it);
@@ -262,7 +227,7 @@ export default function Furnish() {
 
   return (
     <>
-      <style>{PLAN_CSS + CSS}</style>
+      <style>{PLAN_CSS + CATALOGUE_CSS + CSS}</style>
       <div className="wrap">
         <div className="rail">
           <a className="rail-l" href="/">← Space Plan</a>
@@ -274,16 +239,16 @@ export default function Furnish() {
         </div>
 
         <header className="headband">
-          <h1>Furniture</h1>
+          <h1>Current place</h1>
           <div className="steps">
             {STEPS.map((s, i) =>
               s.href ? (
                 <a key={s.label} className={"step" + (i === 1 ? " on" : "")} href={s.href}>
-                  <b>{String(i + 1).padStart(2, "0")}</b> {s.label}
+                  {s.label}
                 </a>
               ) : (
                 <span key={s.label} className="step">
-                  <b>{String(i + 1).padStart(2, "0")}</b> {s.label}
+                  {s.label}
                 </span>
               )
             )}
@@ -292,21 +257,20 @@ export default function Furnish() {
 
         {rooms.length === 0 ? (
           <div className="blank">
-            <h2>The new place is still empty</h2>
+            <h2>Your current place is still empty</h2>
             <p>
-              Draw the rooms you are moving into first — this step puts your furniture
-              into them.
+              Draw the rooms you live in now first — this step is where you record the
+              furniture standing in them.
             </p>
-            <a className="gonext" href="/draw-room">← Back to Rooms</a>
+            <a className="gonext" href="/draw-room">← Back to the plans</a>
           </div>
         ) : (
           <>
             <div className="toolbar">
               <p className="lede">
-                Add what you own on the left. Each piece lands in the new place, and you
-                drag it where it goes — it clicks against walls and against other
-                furniture. Anything that will not stand on the floor stays in the list, in{" "}
-                <i>sage</i>.
+                <span>This is the place you live in now.</span>
+                <span>Put your furniture roughly where it actually stands.</span>
+                <span>The next step moves it all into the new place and tells you what makes it.</span>
               </p>
               <div className="tools">
                 <div className="units">
@@ -314,119 +278,17 @@ export default function Furnish() {
                   <button className={"seg" + (unit === "cm" ? " on" : "")} onClick={() => setPlan((p) => ({ ...p, unit: "cm" }))}>cm</button>
                   <button className={"seg" + (unit === "ft" ? " on" : "")} onClick={() => setPlan((p) => ({ ...p, unit: "ft" }))}>ft / in</button>
                 </div>
-                <div className="units">
-                  <span className="lbl">View</span>
-                  <button className="seg" onClick={() => zoomAt(1 / 0.8)}>−</button>
-                  <span className="zoomval">{Math.round((DEFAULT_VIEW.w / view.w) * 100)}%</span>
-                  <button className="seg" onClick={() => zoomAt(0.8)}>+</button>
-                  <button className="seg" onClick={() => fitView(rooms)}>Fit</button>
-                  <button className={"seg" + (panMode ? " on" : "")} onClick={() => setPanMode((v) => !v)}>Pan</button>
-                </div>
+                <ViewTools pct={v.pct} zoomAt={v.zoomAt} onFit={() => v.fitTo(rooms)} />
               </div>
             </div>
 
             <div className="stage">
-              <aside className="side">
-                <div className="ifield">
-                  <label>Add what you own</label>
-                  <div className="cat">
-                    {CATALOGUE.map((key) => (
-                      <button key={key} className="tile" onClick={() => own(key)} title={`Add ${FURNITURE[key].label}`}>
-                        <span
-                          className="tileart"
-                          dangerouslySetInnerHTML={{ __html: elevationSvg(key, 200) }}
-                        />
-                        <span className="tilelab">{FURNITURE[key].label}</span>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="hint">
-                    Nothing matching? Add the closest thing and change its measurements —
-                    the drawing follows the numbers.
-                  </p>
-                </div>
-
-                <div className="ifield">
-                  <label>
-                    What you own · {count.total} piece{count.total === 1 ? "" : "s"}
-                  </label>
-                  {items.length === 0 && <p className="hint">Nothing yet.</p>}
-                  <ul className="inv">
-                    {items.map((it) => {
-                      const issue = issues.get(it.id);
-                      const f = footprint(it);
-                      return (
-                        <li
-                          key={it.id}
-                          className={
-                            "invrow" + (it.id === selId ? " on" : "") + (issue ? " bad" : "")
-                          }
-                        >
-                          <button className="invhead" onClick={() => setSelId(it.id === selId ? null : it.id)}>
-                            <b>{it.name}</b>
-                            <span className="size">
-                              {fmtLen(f.w, unit)} × {fmtLen(f.d, unit)}
-                            </span>
-                            {issue && <span className="flag">{ISSUE_TEXT[issue]}</span>}
-                          </button>
-
-                          {it.id === selId && (
-                            <div className="invbody">
-                              <input
-                                className="rename"
-                                value={it.name}
-                                onChange={(e) => setItem(it.id, { name: e.target.value })}
-                              />
-                              <div className="three">
-                                <div>
-                                  <label>Width</label>
-                                  <LenInput cm={it.w} unit={unit} onCommit={(v) => setItem(it.id, { w: Math.max(15, Math.round(v)) })} />
-                                </div>
-                                <div>
-                                  <label>Depth</label>
-                                  <LenInput cm={it.d} unit={unit} onCommit={(v) => setItem(it.id, { d: Math.max(15, Math.round(v)) })} />
-                                </div>
-                                <div>
-                                  <label>Height</label>
-                                  <LenInput cm={it.h} unit={unit} onCommit={(v) => setItem(it.id, { h: Math.max(5, Math.round(v)) })} />
-                                </div>
-                              </div>
-                              <div className="segs">
-                                <button className="seg" onClick={() => setItem(it.id, rotated(it))}>Rotate 90°</button>
-                                <button className="seg" onClick={() => duplicate(it.id)}>Duplicate</button>
-                                {it.at ? (
-                                  <button className="seg" onClick={() => setItem(it.id, { at: null })}>Take out</button>
-                                ) : (
-                                  <button className="seg" onClick={() => putInPlan(it.id)}>Put in plan</button>
-                                )}
-                              </div>
-                              <button className="ghost sm danger" onClick={() => drop(it.id)}>
-                                I don&apos;t own this
-                              </button>
-                            </div>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-
-                {trouble.length > 0 && (
-                  <div className="ifield sagebox">
-                    <label>Won&apos;t go in — {trouble.length}</label>
-                    <p className="hint">
-                      These are the pieces the move has to decide about. Step 04 turns them
-                      into Keep, Sell or Toss.
-                    </p>
-                  </div>
-                )}
-              </aside>
-
-              <div className="canvasbox" ref={boxRef}>
+              {/* the drawing leads; the controls answer to it */}
+              <div className="canvasbox" ref={v.boxRef}>
                 <svg
-                  ref={svgRef}
+                  ref={v.svgRef}
                   viewBox={vb.join(" ")}
-                  className={"canvas" + (panMode ? " panning" : "")}
+                  className="canvas"
                 >
                   <RoomLayer
                     rooms={rooms}
@@ -497,12 +359,22 @@ export default function Furnish() {
 
                   {/* rotate grip on the selected piece */}
                   {selected?.at && (
-                    <rect
-                      className="rotgrip"
-                      x={itemRect(selected).x + itemRect(selected).w - (HANDLE_PX * u) / 2}
-                      y={itemRect(selected).y - (HANDLE_PX * u) / 2}
-                      width={HANDLE_PX * u}
-                      height={HANDLE_PX * u}
+                    <FlipGrip
+                      x={itemRect(selected).x}
+                      y={itemRect(selected).y}
+                      size={HANDLE_PX * 2.2 * u}
+                      on={selected.flip}
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        setItem(selected.id, { flip: !selected.flip });
+                      }}
+                    />
+                  )}
+                  {selected?.at && (
+                    <RotateGrip
+                      x={itemRect(selected).x + itemRect(selected).w}
+                      y={itemRect(selected).y}
+                      size={HANDLE_PX * 2.2 * u}
                       onPointerDown={(e) => {
                         e.stopPropagation();
                         setItem(selected.id, rotated(selected));
@@ -517,33 +389,90 @@ export default function Furnish() {
                   )}
                 </svg>
               </div>
+
+              <aside className="side">
+                <section className="block">
+                  <h2 className="blockhead">
+                    What you own <b>{count.total}</b>
+                  </h2>
+                  {items.length === 0 && (
+                    <p className="hint">Open a shelf below and pick what you have.</p>
+                  )}
+                  <ul className="inv">
+                    {items.map((it) => {
+                      const issue = issues.get(it.id);
+                      const f = footprint(it);
+                      return (
+                        <li key={it.id} className={"invrow" + (it.id === selId ? " on" : "") + (issue ? " bad" : "")}>
+                          {it.id === selId ? (
+                            <div className="invhead open">
+                              <input className="rename" value={it.name}
+                                onChange={(e) => setItem(it.id, { name: e.target.value })} />
+                              <span className="size">{fmtLen(f.w, unit)} × {fmtLen(f.d, unit)}</span>
+                            </div>
+                          ) : (
+                            <button className="invhead" onClick={() => setSelId(it.id)}>
+                              <b>{it.name}</b>
+                              <span className="size">{fmtLen(f.w, unit)} × {fmtLen(f.d, unit)}</span>
+                              {issue && <span className="flag">{ISSUE_TEXT[issue]}</span>}
+                            </button>
+                          )}
+
+                          {it.id === selId && (
+                            <div className="invbody">
+                              <div className="three">
+                                <div>
+                                  <label>Width</label>
+                                  <LenInput cm={it.w} unit={unit} onCommit={(x) => setItem(it.id, { w: Math.max(15, Math.round(x)) })} />
+                                </div>
+                                <div>
+                                  <label>Depth</label>
+                                  <LenInput cm={it.d} unit={unit} onCommit={(x) => setItem(it.id, { d: Math.max(15, Math.round(x)) })} />
+                                </div>
+                              </div>
+                              {!it.at && (
+                                <button className="seg" onClick={() => putInPlan(it.id)}>Put it in the plan</button>
+                              )}
+                              <button className="ghost sm danger" onClick={() => drop(it.id)}>
+                                I don&apos;t own this
+                              </button>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
+
+                <section className="block">
+                  <h2 className="blockhead">Furniture library</h2>
+                  <Catalogue onPick={own} verb="Add" />
+                </section>
+              </aside>
             </div>
           </>
         )}
 
         <footer className="foot">
+          {/* nothing here is a verdict: this screen only records what you have */}
           <div className="sum">
             <span>
-              Fits <b>{count.placed}</b>
-            </span>
-            <span className="arrow">/</span>
-            <span>
-              Owned <b>{count.total}</b>
+              Recorded <b>{count.total}</b>
             </span>
             {count.trouble > 0 && (
-              <span className="delta sage">{count.trouble} still to sort out</span>
+              <span className="delta">{count.trouble} not placed yet</span>
             )}
             {rooms.length > 0 && (
               <span className="delta">
-                New place {fmtArea(homeArea(rooms), unit)}
+                Current place <b>{fmtArea(homeArea(rooms), unit)}</b>
               </span>
             )}
           </div>
           <div className="footr">
-            <a className="ghost" href="/draw-room">← Rooms</a>
-            <button className="gonext" disabled title="Coming in step 03">
-              Next · What fits →
-            </button>
+            <a className="ghost" href="/draw-room">← Back</a>
+            <a className="gonext" href="/what-fits">
+              Next →
+            </a>
           </div>
         </footer>
       </div>
@@ -580,42 +509,66 @@ function LenInput({ cm, unit, onCommit }) {
 }
 
 const CSS = `
+/* The gap under the title and the gap under this line should match. They were
+   23px and 10px, which glued the sentence to the drawing and made it look like
+   a caption for the thing below rather than a line of its own. */
 .toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;
-  flex-wrap:wrap;margin-bottom:16px;}
-.lede{max-width:66ch;font-size:clamp(12.5px,1.02vw,15px);font-weight:600;line-height:1.5;}
+  flex-wrap:wrap;margin-bottom:clamp(16px,2.6vh,32px);flex:0 0 auto;}
+.lede{max-width:70ch;font-size:clamp(12.5px,1.02vw,15px);font-weight:600;line-height:1.45;}
+.lede span{display:block;}
 .lede i{font-style:normal;font-weight:800;}
 .tools{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
 
-.stage{display:grid;grid-template-columns:330px minmax(0,1fr);gap:clamp(16px,2vw,30px);
-  align-items:start;flex:1 1 auto;}
-.side{border-top:2px solid var(--ink);padding-top:10px;min-width:0;}
+/* canvas first, controls second — the plan is the subject of the screen */
+/* grid-template-rows is not decoration: a grid row defaults to max-content, so
+   without it the panel grows past the bottom of the page and paints over the
+   footer instead of scrolling inside itself. */
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:minmax(0,1fr);
+  gap:clamp(14px,1.8vw,26px);align-items:stretch;min-height:0;}
+.side{min-width:0;display:flex;flex-direction:column;gap:16px;overflow-y:auto;
+  padding-right:4px;}
+.block{border-top:3px solid var(--ink);padding-top:8px;}
+.blockhead{font-family:var(--display);font-weight:800;letter-spacing:-.02em;font-size:17px;
+  display:flex;align-items:baseline;gap:8px;margin-bottom:6px;}
+.blockhead b{margin-left:auto;font-weight:800;font-size:12px;opacity:.55;}
 
-/* ---------- catalogue ---------- */
-.cat{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
-.tile{background:transparent;border:1px solid rgba(43,43,43,.28);padding:7px 4px 5px;
-  display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;}
-.tile:hover{border-color:var(--ink);background:var(--gold);}
-.tileart{display:flex;align-items:flex-end;justify-content:center;height:44px;width:100%;}
-.tileart svg{height:100%;width:auto;max-width:100%;display:block;}
-.tilelab{font-weight:700;font-size:8.5px;text-transform:uppercase;letter-spacing:.08em;
-  text-align:center;line-height:1.2;opacity:.8;}
 
 /* ---------- inventory ---------- */
 .inv{list-style:none;display:flex;flex-direction:column;gap:3px;}
 .invrow{border:1px solid transparent;}
 .invrow.on{border-color:var(--ink);background:var(--gold);}
-.invrow.bad .invhead b{color:#5C6F6A;}
-.invhead{width:100%;background:transparent;border:0;display:flex;align-items:baseline;gap:8px;
-  padding:6px 8px;text-align:left;}
+/* A NAME IS ONE LINE. "Dining table for eight" used to break across four of
+   them, 39px wide, because the warning underneath it was a flex item claiming
+   100% of the row and the name simply got out of its way. The row wraps now,
+   so the warning takes its own line, and a name too long for the panel is
+   trimmed with an ellipsis rather than folded up. */
+.invhead{width:100%;background:transparent;border:0;display:flex;flex-wrap:wrap;
+  align-items:baseline;gap:4px 8px;padding:6px 8px;text-align:left;}
 .invrow:not(.on) .invhead:hover{background:rgba(43,43,43,.06);}
-.invhead b{font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.08em;}
-.invhead .size{margin-left:auto;font-weight:600;font-size:10px;opacity:.7;white-space:nowrap;}
-.invhead .flag{flex:0 0 100%;font-weight:700;font-size:9px;text-transform:uppercase;
-  letter-spacing:.12em;color:#5C6F6A;}
-.invrow.on .invhead .flag{color:#2B2B2B;}
+.invhead b{font-weight:800;font-size:12.5px;letter-spacing:-.005em;
+  min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.invhead .size{margin-left:auto;flex:0 0 auto;font-weight:600;font-size:10px;opacity:.7;
+  white-space:nowrap;}
+/* The name stays INK. It was going sage when a piece had nowhere to stand,
+   which said the wrong thing twice over: sage is the colour of furniture
+   LEAVING you, and this is furniture you own and are keeping. The warning is
+   the warning's job — it wears the Moving In gold, so it is impossible to miss
+   without recolouring something that belongs to you. */
+/* flex-basis 100% is what breaks the line; max-width:max-content is what stops
+   the chip then painting the full width of the panel. Without the second half
+   a list of five unplaced pieces is five gold bars and no list. */
+.invhead .flag{flex:0 1 100%;max-width:max-content;font-weight:700;font-size:9px;
+  text-transform:uppercase;letter-spacing:.12em;background:var(--gold);color:var(--ink);
+  padding:2px 5px;}
 .invbody{padding:2px 8px 10px;display:flex;flex-direction:column;gap:8px;}
-.invbody .three{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
-.invbody label{margin-bottom:4px;}
+.invbody .three{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:end;}
+.invbody .three .seg{padding:7px 4px;}
+.flipcell{display:flex;align-items:flex-end;height:100%;}
+.invhead.open{display:flex;align-items:baseline;gap:8px;padding:6px 8px;}
+.invhead.open .rename{flex:1 1 auto;min-width:0;font-size:12.5px;letter-spacing:-.005em;
+  font-family:var(--text);font-weight:800;}
+.invbody label{display:block;font-weight:700;font-size:9px;text-transform:uppercase;
+  letter-spacing:.16em;opacity:.6;margin-bottom:4px;}
 .rename{width:100%;background:transparent;border:0;border-bottom:1px solid rgba(43,43,43,.4);
   font-family:var(--display);font-weight:800;font-size:15px;color:var(--ink);padding:2px 0 4px;}
 .rename:focus{outline:none;border-bottom-color:var(--ink);}
@@ -629,17 +582,12 @@ const CSS = `
 .halo{fill:none;stroke:#2B2B2B;stroke-dasharray:7 5;}
 .tagbg{fill:var(--cream);}
 .tagtx{fill:#2B2B2B;font-family:'Archivo Narrow',sans-serif;font-weight:800;
-  text-transform:uppercase;dominant-baseline:middle;}
-.rotgrip{fill:var(--cream);stroke:#2B2B2B;stroke-width:1.4;vector-effect:non-scaling-stroke;
-  cursor:alias;}
+  dominant-baseline:middle;}
 .sum .sage{color:#5C6F6A;}
 
 .blank{border-top:2px solid var(--ink);padding:40px 0;max-width:52ch;}
 .blank h2{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.02em;margin-bottom:8px;}
 .blank p{font-weight:600;font-size:13px;line-height:1.5;margin-bottom:16px;}
 
-@media (max-width:1000px){
-  .stage{grid-template-columns:minmax(0,1fr);}
-  .side{order:2;}
-}
+@media (max-width:1000px){ .stage{grid-template-columns:minmax(0,1fr);} }
 `;

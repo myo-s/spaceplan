@@ -15,7 +15,7 @@
 
 import {
   WALL, GRID, doorSwingPath, fmtArea, fmtLen, innerSeams, openingGapPath,
-  openingGeom, roomArea, roomBox,
+  openingGeom, roomArea, roomBox, windowPanePath,
 } from "../lib/plan";
 
 export default function RoomLayer({
@@ -133,8 +133,8 @@ export default function RoomLayer({
               <path
                 key={op.id}
                 className="sill"
-                strokeWidth={2.4 * u}
-                d={`M${g.A.x} ${g.A.y} L${g.B.x} ${g.B.y}`}
+                strokeWidth={1.6 * u}
+                d={windowPanePath(g, WALL)}
               />
             );
           }
@@ -190,12 +190,16 @@ export const PLAN_CSS = `
 html,body{min-height:100%;}
 body{background:var(--cream);color:var(--ink);font-family:var(--text);
   -webkit-font-smoothing:antialiased;}
-.wrap{max-width:1560px;margin:0 auto;padding:clamp(10px,1.3vh,20px) 3vw clamp(16px,2vh,30px);
-  display:flex;flex-direction:column;min-height:100vh;}
+/* ONE SCREEN. The page is exactly the window tall and never scrolls; the plan
+   takes whatever height is left over and the side panel scrolls inside itself.
+   A drawing you have to scroll to see is a drawing you cannot judge. */
+.wrap{max-width:1560px;margin:0 auto;padding:clamp(8px,1.2vh,18px) 3vw clamp(8px,1.2vh,16px);
+  display:flex;flex-direction:column;height:100dvh;overflow:hidden;}
+.stage{flex:1 1 auto;min-height:0;}
 
 /* ---------- running head ---------- */
-.rail{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;
-  padding-bottom:8px;border-bottom:1px solid var(--ink);margin-bottom:clamp(10px,1.4vh,20px);}
+.rail{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;flex:0 0 auto;
+  padding-bottom:6px;border-bottom:1px solid var(--ink);margin-bottom:clamp(20px,3.2vh,44px);}
 .rail-l,.rail-r{font-weight:700;font-size:clamp(9px,.78vw,11px);text-transform:uppercase;letter-spacing:.16em;}
 .rail-l{color:var(--ink);text-decoration:none;}
 .rail-l:hover{text-decoration:underline;text-underline-offset:3px;}
@@ -206,10 +210,22 @@ body{background:var(--cream);color:var(--ink);font-family:var(--text);
 .dot{width:7px;height:7px;border-radius:50%;background:var(--ink);flex:0 0 auto;}
 
 /* ---------- headband + step rail ---------- */
+/* THE TITLE NEEDS AIR. It used to sit 6px under the rule above it and 8px on
+   top of the rule below, which read as a headline squeezed between two wires.
+   The space is in vh so it opens up on a tall window and closes on a short one
+   — the page still has to fit the screen exactly once. */
 .headband{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
-  flex-wrap:wrap;border-bottom:3px solid var(--ink);padding-bottom:10px;margin-bottom:14px;}
-.headband h1{font-family:var(--display);font-weight:800;line-height:.9;letter-spacing:-.03em;
-  font-size:clamp(38px,6.4vw,92px);}
+  flex-wrap:wrap;border-bottom:3px solid var(--ink);
+  padding-bottom:clamp(16px,2.7vh,36px);margin-bottom:clamp(16px,2.6vh,32px);
+  flex:0 0 auto;}
+/* THE SAME MASTHEAD AS THE FRONT DOOR, one size down. The front page sets
+   "Space Plan" in Archivo 800 at its NATURAL width — measured, the SVG stretch
+   there works out to -0.002em, which is no tracking at all. These titles used
+   to be tightened to -0.03em, a different voice however slightly, and at 58px
+   the extra size was what made them read as fat. Same face, same weight, same
+   tracking, 48px: the front page's nameplate, arriving on an inside page. */
+.headband h1{font-family:var(--display);font-weight:800;line-height:1;
+  letter-spacing:-.002em;font-size:clamp(26px,3.7vw,48px);}
 .steps{display:flex;gap:clamp(10px,1.4vw,22px);flex-wrap:wrap;padding-bottom:6px;}
 .step{font-weight:600;font-size:clamp(8.5px,.74vw,10.5px);text-transform:uppercase;
   letter-spacing:.14em;opacity:.42;white-space:nowrap;color:var(--ink);text-decoration:none;}
@@ -217,10 +233,26 @@ body{background:var(--cream);color:var(--ink);font-family:var(--text);
 .step.on{opacity:1;}
 a.step:hover{opacity:1;text-decoration:underline;text-underline-offset:4px;}
 
+/* ---------- one rule about capitals ----------
+   Archivo (wide) in mixed case for anything you READ: page titles, headings,
+   sentences, big numbers. The page title is set exactly as the front page sets
+   the app's own name — Archivo 800 at natural width — so every screen carries
+   the same nameplate.
+   Archivo Narrow (narrow) in CAPS with letterspacing for anything you SCAN:
+   buttons, field labels, running heads, captions, tags.
+   And a third rule that trumps both: text the USER typed is shown exactly as
+   they typed it. Their furniture is called "Grandma's dresser", not
+   "GRANDMA'S DRESSER" — uppercasing someone's own words throws away their
+   capitals and makes long names hard to read.
+   ------------------------------------------------------------------------ */
+
 /* ---------- controls ---------- */
 button{font:inherit;color:inherit;cursor:pointer;}
 .seg{background:transparent;border:1px solid var(--ink);padding:5px 11px;
   font-family:var(--text);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;}
+/* anchors styled as buttons must not fall back to the browser's link blue */
+a.seg,a.ghost,a.gonext{color:var(--ink);text-decoration:none;display:inline-block;}
+a.gonext{color:var(--cream);}
 .seg:hover{background:rgba(43,43,43,.08);}
 .seg.on{background:var(--ink);color:var(--cream);}
 .seg:disabled{opacity:.35;cursor:not-allowed;}
@@ -240,8 +272,9 @@ button{font:inherit;color:inherit;cursor:pointer;}
 .zoomval{font-weight:700;font-size:10.5px;min-width:42px;text-align:center;letter-spacing:.04em;}
 
 /* ---------- canvas ---------- */
-.canvasbox{border:1px solid rgba(43,43,43,.4);overflow:hidden;}
-.canvas{display:block;width:100%;aspect-ratio:100/70;touch-action:none;}
+.canvasbox{border:1px solid rgba(43,43,43,.4);overflow:hidden;
+  display:flex;flex-direction:column;min-height:0;height:100%;}
+.canvas{display:block;width:100%;flex:1 1 auto;min-height:0;touch-action:none;}
 .sheet{fill:#F6F2E6;cursor:crosshair;}
 .canvas.panning .sheet{cursor:grab;}
 /* grid lines and wall strokes are hit-testable by default, and being on top
@@ -255,12 +288,28 @@ button{font:inherit;color:inherit;cursor:pointer;}
 .swing{stroke:#2B2B2B;fill:none;stroke-linecap:round;}
 .labels text{text-anchor:middle;dominant-baseline:middle;fill:#2B2B2B;}
 .rname{font-family:'Archivo',sans-serif;font-weight:800;}
-.rdim{font-family:'Archivo Narrow',sans-serif;font-weight:700;text-transform:uppercase;
+/* NOT uppercased: this line ends in a unit, and "420 CM" is not how anyone
+   writes a centimetre. The same measurement appears in mixed case in the
+   panels on every step, and it has to be the same string in both places. */
+.rdim{font-family:'Archivo Narrow',sans-serif;font-weight:700;
   fill:#2B2B2B;opacity:.75;text-anchor:middle;dominant-baseline:middle;}
 .ghosttext{text-anchor:middle;dominant-baseline:middle;fill:rgba(43,43,43,.35);
   font-family:'Archivo Narrow',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.18em;}
 .banner{text-anchor:middle;dominant-baseline:middle;fill:#2B2B2B;
   font-family:'Archivo Narrow',sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.14em;}
+
+.rotgrip{cursor:alias;}
+.rotgrip .rgbg{fill:var(--cream);stroke:#2B2B2B;stroke-width:1.2;vector-effect:non-scaling-stroke;}
+.rotgrip .rgarc{stroke:#2B2B2B;stroke-linecap:round;}
+.rotgrip .rgtip{fill:#2B2B2B;}
+.rotgrip:hover .rgbg{fill:var(--gold);}
+.flipgrip{cursor:pointer;}
+.flipgrip .rgbg{fill:var(--cream);stroke:#2B2B2B;stroke-width:1.2;vector-effect:non-scaling-stroke;}
+.flipgrip .fgaxis{stroke:#2B2B2B;}
+.flipgrip .fgsolid{fill:#2B2B2B;}
+.flipgrip .fghollow{stroke:#2B2B2B;}
+.flipgrip:hover .rgbg{fill:var(--gold);}
+.flipgrip.on .rgbg{fill:var(--gold);}
 
 /* ---------- panel furniture ---------- */
 .insp{border-top:2px solid var(--ink);padding-top:10px;min-width:0;align-self:start;}
@@ -283,9 +332,17 @@ button{font:inherit;color:inherit;cursor:pointer;}
 .len button{background:transparent;border:0;padding:0 10px;font-weight:800;font-size:14px;line-height:1;}
 .len button:hover{background:rgba(43,43,43,.1);}
 
+/* Below this the window simply has not got the height; let it scroll rather
+   than squeeze the drawing into a letterbox. */
+@media (max-height:620px){
+  .wrap{height:auto;overflow:visible;}
+  .canvasbox{height:auto;}
+  .canvas{aspect-ratio:100/68;flex:0 0 auto;}
+}
+
 /* ---------- footer ---------- */
 .foot{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
-  margin-top:clamp(16px,2.2vh,30px);padding-top:12px;border-top:3px solid var(--ink);}
+  margin-top:clamp(8px,1.4vh,16px);padding-top:9px;border-top:3px solid var(--ink);flex:0 0 auto;}
 .sum{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
   font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;}
 .sum b{font-family:var(--display);font-weight:800;font-size:clamp(15px,1.5vw,22px);letter-spacing:-.01em;

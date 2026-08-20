@@ -27,7 +27,7 @@ import {
   allParts, boxOf, clamp, collides, doorSwingPath, fmtArea, fmtLen, homeArea,
   homeBox, innerSeams, inputLen, makeRoom, mergeRooms, migrateRoom, OPENING_DEFAULT,
   nearestWall, nudgeStep, openingGapPath, openingGeom, parseLen, roomArea,
-  roomBox, roomsTouch, sanitize, snap, snapRect, splitRoom, uid,
+  roomBox, roomsTouch, sanitize, snap, snapRect, splitRoom, uid, windowPanePath,
 } from "../lib/plan";
 
 const STORE = "spaceplan.plan.v4";
@@ -39,37 +39,56 @@ const MAX_VIEW = 4000;     // cm across, fully zoomed out
 const DEFAULT_VIEW = { x: -60, y: -60, w: 940 };
 
 const HOMES = [
-  { key: "current", label: "Current place", kicker: "What you have now" },
-  { key: "next", label: "New place", kicker: "Where it all has to go" },
+  { key: "current", label: "Current place", kicker: "The one you live in now" },
+  { key: "next", label: "New place", kicker: "The one you are moving into" },
 ];
 
+/**
+ * FOUR STEPS, and they name the SITUATION rather than the controls. Earlier
+ * attempts called step 03 "What fits", then "The verdict", then "Keep, sell,
+ * buy" — each one a truer description of the buttons on the screen and each
+ * one further from what a person is actually doing there.
+ *
+ * CURRENT PLACE and NEW PLACE are the two words the whole app turns on. Step
+ * 01 draws them side by side and hands them over; step 02 takes the first,
+ * step 03 plans the second, step 04 is what you decided. Note that "plan" only
+ * appears twice and means the same thing both times — an earlier set had a
+ * "New place plan" next to a "Final plan" where the first meant a drawing and
+ * the second meant a decision.
+ */
 const STEPS = [
-  { label: "Rooms", href: "/draw-room" },
-  { label: "Furniture", href: "/furniture" },
-  { label: "What fits", href: null },
-  { label: "Keep / Sell / Toss", href: null },
-  { label: "Preview", href: null },
+  { label: "Compare spaces", href: "/draw-room" },
+  { label: "Current place", href: "/furniture" },
+  { label: "Plan new place", href: "/what-fits" },
+  { label: "Final plan", href: "/plan" },
 ];
 
 const EMPTY = { unit: "cm", homes: { current: { rooms: [] }, next: { rooms: [] } } };
 
 export default function DrawRoom() {
   const [plan, setPlan] = useState(EMPTY);
+  const [loaded, setLoaded] = useState(false);
   const [sel, setSel] = useState({ home: "current", roomId: null, part: null });
   const [drag, setDrag] = useState(null);
   const [draft, setDraft] = useState(null);
   /** "I am about to put a door somewhere" — the wall is chosen by clicking it. */
   const [placing, setPlacing] = useState(null);
   const [view, setView] = useState(DEFAULT_VIEW);
-  const [panMode, setPanMode] = useState(false);
   const [boardPx, setBoardPx] = useState(440);
+  const [aspect, setAspect] = useState(ASPECT);
   const boardRef = useRef(null);
   const dragRef = useRef(null);
   const viewRef = useRef(view);
   dragRef.current = drag;
   viewRef.current = view;
 
-  /* ---------------------------------------------------------- persistence */
+  /* ---------------------------------------------------------- persistence
+   * The save effect waits for the load effect to have LANDED. Both run on the
+   * same first commit, and on that commit `plan` is still the empty one — so a
+   * save that fires immediately writes an empty flat straight over the one the
+   * user saved last time. It only survived because the load had already read
+   * the string by then; close the tab in that instant and the plan is gone.
+   */
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORE);
@@ -87,13 +106,15 @@ export default function DrawRoom() {
         }
       }
     } catch {}
+    setLoaded(true);
   }, []);
 
   useEffect(() => {
+    if (!loaded) return;
     try {
       window.localStorage.setItem(STORE, JSON.stringify(plan));
     } catch {}
-  }, [plan]);
+  }, [plan, loaded]);
 
   /* ------------------------------------------------- one scale, measured */
   useEffect(() => {
@@ -103,35 +124,41 @@ export default function DrawRoom() {
       const w = e.contentRect.width || 900;
       const cols = w > 760 ? 2 : 1;
       setBoardPx(Math.max(160, (w - BOARD_GAP * (cols - 1)) / cols - 2));
+      // the drawing is cut to the space it is given, not to a fixed ratio
+      const canvas = el.querySelector(".canvas");
+      if (canvas) {
+        const r = canvas.getBoundingClientRect();
+        if (r.width > 40 && r.height > 40) setAspect(r.height / r.width);
+      }
     });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
   const pxPerCm = boardPx / view.w;
-  const viewBox = `${view.x} ${view.y} ${view.w} ${view.w * ASPECT}`;
+  const viewBox = `${view.x} ${view.y} ${view.w} ${view.w * aspect}`;
 
   /* ---------------------------------------------------------- zoom + pan */
   const zoomAt = useCallback((factor, fx = 0.5, fy = 0.5) => {
     setView((v) => {
       const w = clamp(v.w * factor, MIN_VIEW, MAX_VIEW);
       if (w === v.w) return v;
-      const h = v.w * ASPECT;
-      const nh = w * ASPECT;
+      const h = v.w * aspect;
+      const nh = w * aspect;
       return { x: v.x + (v.w - w) * fx, y: v.y + (h - nh) * fy, w };
     });
-  }, []);
+  }, [aspect]);
 
   const fitView = useCallback(() => {
     const box = boxOf([...plan.homes.current.rooms, ...plan.homes.next.rooms].flatMap((r) => r.parts));
     if (!box.w || !box.d) return setView(DEFAULT_VIEW);
-    const w = clamp(Math.max(box.w, box.d / ASPECT) * 1.22, MIN_VIEW, MAX_VIEW);
+    const w = clamp(Math.max(box.w, box.d / aspect) * 1.22, MIN_VIEW, MAX_VIEW);
     setView({
       x: box.x + box.w / 2 - w / 2,
-      y: box.y + box.d / 2 - (w * ASPECT) / 2,
+      y: box.y + box.d / 2 - (w * aspect) / 2,
       w,
     });
-  }, [plan]);
+  }, [plan, aspect]);
 
   /* -------------------------------------------------------------- edits */
   const setRoom = useCallback((homeKey, roomId, fn) => {
@@ -233,7 +260,7 @@ export default function DrawRoom() {
     if (!svg.viewBox) return;
     const pt = toCm(e, svg);
     if (placing) return placeOpening(pt, info.home);
-    const wantsPan = info.mode === "create" && (panMode || e.button === 1 || e.shiftKey);
+    const wantsPan = info.mode === "create" && (e.button === 1 || e.shiftKey);
     const mode = wantsPan ? "pan" : info.mode;
     if (mode === "create" || mode === "pan") setSel((s) => ({ ...s, roomId: mode === "pan" ? s.roomId : null, part: null }));
     else setSel({ home: info.home, roomId: info.roomId, part: info.part ?? null });
@@ -394,28 +421,20 @@ export default function DrawRoom() {
         </div>
 
         <header className="headband">
-          <h1>Rooms</h1>
+          <h1>Compare spaces</h1>
           <div className="steps">
-            {STEPS.map((s, i) =>
-              s.href ? (
-                <a key={s.label} className={"step" + (i === 0 ? " on" : "")} href={s.href}>
-                  <b>{String(i + 1).padStart(2, "0")}</b> {s.label}
-                </a>
-              ) : (
-                <span key={s.label} className="step">
-                  <b>{String(i + 1).padStart(2, "0")}</b> {s.label}
-                </span>
-              )
-            )}
+            {STEPS.map((s, i) => (
+              <a key={s.label} className={"step" + (i === 0 ? " on" : "")} href={s.href}>
+                {s.label}
+              </a>
+            ))}
           </div>
         </header>
 
         <div className="toolbar">
           <p className="lede">
-            Drag on the canvas to draw a room. Draw the next one against it — edges click
-            together. For an <i>L</i> or <i>U</i> shaped room, draw a second box beside the
-            first and press <i>Merge</i>: the wall between them disappears and it becomes one
-            room.
+            <span>Drag on a canvas to draw rooms.</span>
+            <span>Here you can compare the current place and the new one.</span>
           </p>
           <div className="tools">
             <div className="units">
@@ -429,20 +448,13 @@ export default function DrawRoom() {
               <span className="zoomval">{Math.round((DEFAULT_VIEW.w / view.w) * 100)}%</span>
               <button className="seg" onClick={() => zoomAt(0.8)} title="Zoom in">+</button>
               <button className="seg" onClick={fitView}>Fit</button>
-              <button
-                className={"seg" + (panMode ? " on" : "")}
-                onClick={() => setPanMode((v) => !v)}
-                title="Drag the canvas instead of drawing"
-              >
-                Pan
-              </button>
             </div>
           </div>
         </div>
 
         <div className="stage">
           <div className="boards" ref={boardRef}>
-            {HOMES.map((h, hi) => {
+            {HOMES.map((h) => {
               const rooms = plan.homes[h.key].rooms;
               const other = plan.homes[h.key === "current" ? "next" : "current"].rooms;
               const box = homeBox(rooms);
@@ -450,7 +462,6 @@ export default function DrawRoom() {
                 <section className="home" key={h.key}>
                   <div className="bhead">
                     <div>
-                      <span className="num">{String(hi + 1).padStart(2, "0")}</span>
                       <h2>{h.label}</h2>
                       <p className="kick">{h.kicker}</p>
                     </div>
@@ -466,7 +477,6 @@ export default function DrawRoom() {
                     unit={plan.unit}
                     viewBox={viewBox}
                     pxPerCm={pxPerCm}
-                    panMode={panMode}
                     selId={sel.home === h.key ? sel.roomId : null}
                     part={sel.home === h.key ? sel.part : null}
                     draft={draft && draft.home === h.key ? draft : null}
@@ -477,7 +487,7 @@ export default function DrawRoom() {
 
                   <div className="bfoot">
                     {rooms.length === 0 ? (
-                      <span className="tip">Drag anywhere on the canvas to draw your first room</span>
+                      <span className="tip">No rooms yet</span>
                     ) : (
                       <span className="tip">
                         {fmtLen(box.w, plan.unit)} × {fmtLen(box.d, plan.unit)} overall
@@ -515,9 +525,9 @@ export default function DrawRoom() {
 
         <footer className="foot">
           <div className="sum">
-            <span>Current <b>{fmtArea(homeArea(plan.homes.current.rooms), plan.unit)}</b></span>
+            <span>Current place <b>{fmtArea(homeArea(plan.homes.current.rooms), plan.unit)}</b></span>
             <span className="arrow">→</span>
-            <span>New <b>{fmtArea(homeArea(plan.homes.next.rooms), plan.unit)}</b></span>
+            <span>New place <b>{fmtArea(homeArea(plan.homes.next.rooms), plan.unit)}</b></span>
             <span className="delta">{deltaLine(plan)}</span>
           </div>
           <div className="footr">
@@ -534,7 +544,7 @@ export default function DrawRoom() {
               Reset
             </button>
             <a className="gonext" href="/furniture">
-              Next · Furniture →
+              Next →
             </a>
           </div>
         </footer>
@@ -576,7 +586,7 @@ const GRIPS = [
   ["bl", 0, 1], ["l", 0, 0.5],
 ];
 
-function HomeCanvas({ homeKey, rooms, unit, viewBox, pxPerCm, panMode, selId, part, draft, placing, onDrag, onZoom }) {
+function HomeCanvas({ homeKey, rooms, unit, viewBox, pxPerCm, selId, part, draft, placing, onDrag, onZoom }) {
   const u = 1 / Math.max(pxPerCm, 0.001);   // cm per px — keeps chrome one size
   const hs = HANDLE_PX * u;
   const gid = `gaps-${homeKey}`;
@@ -651,7 +661,7 @@ function HomeCanvas({ homeKey, rooms, unit, viewBox, pxPerCm, panMode, selId, pa
       <svg
         ref={ref}
         viewBox={viewBox}
-        className={"canvas" + (panMode ? " panning" : "") + (placing ? " placing" : "")}
+        className={"canvas" + (placing ? " placing" : "")}
         onPointerMove={placing ? trackGhost : undefined}
         onPointerLeave={placing ? () => setGhost(null) : undefined}
       >
@@ -769,8 +779,8 @@ function HomeCanvas({ homeKey, rooms, unit, viewBox, pxPerCm, panMode, selId, pa
                       <path
                         className="ghostline"
                         fill="none"
-                        strokeWidth={2.6 * u}
-                        d={`M${g.A.x} ${g.A.y} L${g.B.x} ${g.B.y}`}
+                        strokeWidth={1.8 * u}
+                        d={windowPanePath(g, WALL)}
                       />
                     )}
                   </g>
@@ -800,25 +810,12 @@ function HomeCanvas({ homeKey, rooms, unit, viewBox, pxPerCm, panMode, selId, pa
 function Inspector({ plan, sel, room, neighbours, placing, setRoom, setSel, onRemove, onMerge, onSplit, onPlace }) {
   const unit = plan.unit;
 
-  if (!room) {
-    return (
-      <aside className="insp">
-        <h3>Nothing selected</h3>
-        <p className="hint">
-          Drag on a canvas to draw a room. Click a room to rename it, resize it, or put a
-          door in it. Drag a room by its middle; drag a corner or an edge to resize.
-        </p>
-        <p className="hint">
-          <b>L or U shaped room:</b> draw a second box against the first, select one of them,
-          then press Merge. The two become a single room with the wall between them removed.
-        </p>
-        <p className="hint">
-          <b>Wheel</b> zooms both canvases together. Hold <b>Shift</b> and drag — or turn on
-          Pan — to move around.
-        </p>
-      </aside>
-    );
-  }
+  // Nothing selected, nothing to say. The panel used to fill up with three
+  // paragraphs of instructions nobody reads twice; the canvas already says
+  // "Drag to draw a room" in the middle of itself, which is where you are
+  // looking. The empty column stays in the layout so the drawing does not
+  // jump wider every time you click away from a room.
+  if (!room) return <aside className="insp" />;
 
   const box = roomBox(room);
   const multi = room.parts.length > 1;
@@ -905,25 +902,20 @@ function Inspector({ plan, sel, room, neighbours, placing, setRoom, setSel, onRe
         <label>Doors &amp; windows</label>
         <div className="segs">
           <button
-            className={"seg" + (placing?.type === "door" ? " on" : "")}
+            className={"seg pic" + (placing?.type === "door" ? " on" : "")}
             onClick={() => onPlace("door")}
           >
-            + Door
+            <DoorMark />
+            Door
           </button>
           <button
-            className={"seg" + (placing?.type === "window" ? " on" : "")}
+            className={"seg pic" + (placing?.type === "window" ? " on" : "")}
             onClick={() => onPlace("window")}
           >
-            + Window
+            <WindowMark />
+            Window
           </button>
         </div>
-        {placing ? (
-          <p className="hint arm">
-            Now click the wall you want the {placing.type} on. Esc cancels.
-          </p>
-        ) : (
-          <p className="hint">You pick the wall — the button arms it, the click places it.</p>
-        )}
         <ul className="oplist">
           {room.openings.map((o, i) => (
             <li
@@ -956,7 +948,6 @@ function Inspector({ plan, sel, room, neighbours, placing, setRoom, setSel, onRe
                 </button>
               </div>
             )}
-            <p className="hint">Drag the dot on the plan to slide it along the wall, or onto another wall.</p>
             <button className="ghost sm" onClick={() => dropOpening(selOpening.id)}>
               Remove this {selOpening.type}
             </button>
@@ -970,6 +961,41 @@ function Inspector({ plan, sel, room, neighbours, placing, setRoom, setSel, onRe
         </button>
       </div>
     </aside>
+  );
+}
+
+/* ------------------------------------------------------- door + window marks
+ *
+ * The button shows the thing it draws. A door on the plan is a gap punched
+ * through a thick wall, a leaf standing open across it and a thin arc sweeping
+ * the floor it needs; a window is the same gap with a thin sill line laid
+ * across it. Those are the marks, at button size, in the same proportions —
+ * WALL is 11cm against an 85cm opening, roughly one to eight, so the wall here
+ * is 2.6 units against a 12-unit gap.
+ *
+ * The point is that you never have to learn a legend: the word next to the
+ * picture and the picture on the plan are the same picture.
+ */
+function DoorMark() {
+  return (
+    <svg className="opmark" viewBox="0 0 30 19" aria-hidden="true">
+      {/* wall, with the opening left out of it */}
+      <path className="omwall" d="M0 16 H9 M21 16 H30" />
+      {/* the leaf, standing open, and the floor it sweeps */}
+      <path className="omleaf" d="M9 16 V4" />
+      <path className="omarc" d="M9 4 A12 12 0 0 1 21 16" />
+    </svg>
+  );
+}
+
+function WindowMark() {
+  return (
+    <svg className="opmark" viewBox="0 0 30 19" aria-hidden="true">
+      <path className="omwall" d="M0 16 H9 M21 16 H30" />
+      {/* the glazing box, outlined at both faces of the wall — the same mark,
+          in the same proportions, that windowPanePath draws on the plan */}
+      <path className="omsill" d="M9 14.7 H21 V17.3 H9 Z" />
+    </svg>
   );
 }
 
@@ -1006,105 +1032,66 @@ function LenInput({ cm, unit, onCommit }) {
   );
 }
 
-/* ------------------------------------------------------------------ CSS */
+/* ------------------------------------------------------------------ CSS
+ *
+ * ONLY WHAT IS PARTICULAR TO THIS SCREEN LIVES HERE. This block used to
+ * re-declare the palette, the running head, the step rail, the buttons, the
+ * canvas colours, the footer and the inspector — a second copy of PLAN_CSS
+ * that had quietly drifted away from the original. That is why step 01 had a
+ * 92px title and steps 02 and 03 had a 58px one, why this page scrolled while
+ * the others did not, and why the small caps here were a different size from
+ * the small caps there. Every one of those rules is now deleted, so the shared
+ * sheet is the only sheet and the three screens are typographically identical.
+ */
 
 const CSS = `
-*{margin:0;padding:0;box-sizing:border-box;}
-:root{--cream:#F0EAD8;--gold:#D2BF81;--sage:#99ABA6;--ink:#2B2B2B;
-  --display:'Archivo',sans-serif;--text:'Archivo Narrow',sans-serif;}
-html,body{min-height:100%;}
-body{background:var(--cream);color:var(--ink);font-family:var(--text);
-  -webkit-font-smoothing:antialiased;}
-.wrap{max-width:1560px;margin:0 auto;padding:clamp(10px,1.3vh,20px) 3vw clamp(16px,2vh,30px);
-  display:flex;flex-direction:column;min-height:100vh;}
-
-/* ---------- running head ---------- */
-.rail{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;
-  padding-bottom:8px;border-bottom:1px solid var(--ink);margin-bottom:clamp(10px,1.4vh,20px);}
-.rail-l,.rail-r{font-weight:700;font-size:clamp(9px,.78vw,11px);text-transform:uppercase;letter-spacing:.16em;}
-.rail-l{color:var(--ink);text-decoration:none;}
-.rail-l:hover{text-decoration:underline;text-underline-offset:3px;}
-.rail-c{font-weight:700;font-size:clamp(11px,.95vw,14px);white-space:nowrap;}
-.rail-r{justify-self:end;display:flex;align-items:center;gap:clamp(12px,1.4vw,22px);}
-.rail-r a{color:var(--ink);text-decoration:none;}
-.rail-r a:hover{text-decoration:underline;text-underline-offset:3px;}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--ink);flex:0 0 auto;}
-
-/* ---------- headband ---------- */
-.headband{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;
-  flex-wrap:wrap;border-bottom:3px solid var(--ink);padding-bottom:10px;margin-bottom:14px;}
-.headband h1{font-family:var(--display);font-weight:800;line-height:.9;letter-spacing:-.03em;
-  font-size:clamp(38px,6.4vw,92px);}
-.steps{display:flex;gap:clamp(10px,1.4vw,22px);flex-wrap:wrap;padding-bottom:6px;}
-.step{font-weight:600;font-size:clamp(8.5px,.74vw,10.5px);text-transform:uppercase;
-  letter-spacing:.14em;opacity:.42;white-space:nowrap;}
-.step b{font-weight:800;letter-spacing:.04em;}
-.step.on{opacity:1;}
-
 /* ---------- toolbar ---------- */
+/* The gap under the title and the gap under this line should match. They were
+   23px and 10px, which glued the sentence to the drawing and made it look like
+   a caption for the thing below rather than a line of its own. */
 .toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;
-  flex-wrap:wrap;margin-bottom:16px;}
-.lede{max-width:66ch;font-size:clamp(12.5px,1.02vw,15px);font-weight:600;line-height:1.5;}
-.lede i{font-style:normal;font-weight:800;}
+  flex-wrap:wrap;margin-bottom:clamp(16px,2.6vh,32px);flex:0 0 auto;}
+.lede{max-width:70ch;font-size:clamp(12.5px,1.02vw,15px);font-weight:600;line-height:1.45;}
+.lede span{display:block;}
 .tools{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
-.units{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
-.units .lbl{font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.16em;opacity:.6;
-  margin-right:2px;}
-.zoomval{font-weight:700;font-size:10.5px;min-width:42px;text-align:center;letter-spacing:.04em;}
 
-button{font:inherit;color:inherit;cursor:pointer;}
-.seg{background:transparent;border:1px solid var(--ink);padding:5px 11px;
-  font-family:var(--text);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;}
-.seg:hover{background:rgba(43,43,43,.08);}
-.seg.on{background:var(--ink);color:var(--cream);}
-
-/* ---------- stage ---------- */
-.stage{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:clamp(16px,2vw,32px);
-  align-items:start;flex:1 1 auto;}
-.boards{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;min-width:0;}
-.home{min-width:0;}
-.bhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
-  border-top:2px solid var(--ink);padding:10px 0;border-bottom:1px solid rgba(43,43,43,.3);
-  margin-bottom:10px;}
-.bhead .num{font-weight:800;font-size:9.5px;letter-spacing:.1em;opacity:.6;display:block;
-  text-transform:uppercase;margin-bottom:2px;}
+/* ---------- stage: two boards on the left, one panel on the right ---------- */
+/* grid-template-rows is not decoration: a grid row defaults to max-content, so
+   without it the panel grows past the bottom of the page and paints over the
+   footer instead of scrolling inside itself. */
+.stage{display:grid;grid-template-columns:minmax(0,1fr) 300px;grid-template-rows:minmax(0,1fr);
+  gap:clamp(14px,1.8vw,26px);align-items:stretch;}
+.boards{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:stretch;
+  min-width:0;min-height:0;}
+.home{min-width:0;display:flex;flex-direction:column;min-height:0;}
+.bhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex:0 0 auto;
+  border-top:2px solid var(--ink);padding:8px 0;border-bottom:1px solid rgba(43,43,43,.3);
+  margin-bottom:8px;}
 .bhead h2{font-family:var(--display);font-weight:800;letter-spacing:-.02em;line-height:1;
-  font-size:clamp(19px,1.85vw,28px);}
-.bhead .kick{font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.13em;
+  font-size:clamp(17px,1.6vw,24px);}
+.bhead .kick{font-weight:600;font-size:9.5px;text-transform:uppercase;letter-spacing:.13em;
   opacity:.6;margin-top:4px;}
 .btotal{text-align:right;flex:0 0 auto;}
-.btotal b{display:block;font-family:var(--display);font-weight:800;font-size:clamp(15px,1.4vw,21px);
+.btotal b{display:block;font-family:var(--display);font-weight:800;font-size:clamp(14px,1.3vw,19px);
   letter-spacing:-.01em;}
 .btotal span{font-weight:600;font-size:9.5px;text-transform:uppercase;letter-spacing:.13em;opacity:.6;}
+/* the shared sheet gives a lone canvas the whole column; here the board also
+   carries a head and a foot, so the drawing takes what is left instead */
+.canvasbox{flex:1 1 auto;height:auto;}
+.bfoot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  padding-top:7px;flex:0 0 auto;}
+/* the same treatment the furniture sizes get on step 02, for the same reason:
+   it ends in a unit */
+.tip{font-weight:600;font-size:10px;opacity:.7;}
 
-/* ---------- canvas ---------- */
-.canvasbox{border:1px solid rgba(43,43,43,.4);overflow:hidden;}
-.canvas{display:block;width:100%;aspect-ratio:100/70;touch-action:none;}
-.sheet{fill:#F6F2E6;cursor:crosshair;}
-.canvas.panning .sheet{cursor:grab;}
-/* grid lines and wall strokes are hit-testable by default, and being on top
-   they would swallow clicks meant for the floor or the empty sheet */
-.gridlines,.walls{pointer-events:none;}
-.gridlines{stroke:rgba(43,43,43,.13);fill:none;}
-.floor{fill:#EDE6D2;cursor:move;}
-.floor.on{fill:var(--gold);}
-.walls rect{fill:none;stroke:#2B2B2B;}
-.sill{stroke:#2B2B2B;fill:none;}
-.swing{stroke:#2B2B2B;fill:none;stroke-linecap:round;}
-.labels text{text-anchor:middle;dominant-baseline:middle;fill:#2B2B2B;}
-.rname{font-family:'Archivo',sans-serif;font-weight:800;}
-.rdim{font-family:'Archivo Narrow',sans-serif;font-weight:700;text-transform:uppercase;
-  fill:#2B2B2B;opacity:.75;text-anchor:middle;dominant-baseline:middle;}
-.ghosttext{text-anchor:middle;dominant-baseline:middle;fill:rgba(43,43,43,.35);
-  font-family:'Archivo Narrow',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.18em;}
+/* ---------- drawing a room ---------- */
+.floor{cursor:move;}
 .draft{fill:rgba(210,191,129,.4);stroke:#2B2B2B;stroke-dasharray:8 6;}
 .draft.bad{fill:rgba(43,43,43,.14);stroke-dasharray:3 5;}
 .canvas.placing .sheet,.canvas.placing .floor{cursor:copy;}
 .pickwall rect{fill:none;stroke:rgba(210,191,129,.85);}
 .ghostgap{fill:var(--gold);}
 .ghostline{stroke:#2B2B2B;stroke-linecap:round;}
-.banner{text-anchor:middle;dominant-baseline:middle;fill:#2B2B2B;
-  font-family:'Archivo Narrow',sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.14em;}
 .h{cursor:grab;}
 .h.grip{fill:var(--cream);stroke:#2B2B2B;stroke-width:1.4;vector-effect:non-scaling-stroke;}
 .g-tl,.g-br{cursor:nwse-resize;}
@@ -1114,82 +1101,47 @@ button{font:inherit;color:inherit;cursor:pointer;}
 .h.op{fill:#2B2B2B;stroke:var(--cream);stroke-width:1.6;vector-effect:non-scaling-stroke;}
 .h.op.sel{fill:#fff;stroke:#2B2B2B;}
 
-.bfoot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
-  padding-top:8px;}
-.tip{font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.13em;opacity:.62;}
-
 /* ---------- inspector ---------- */
-.insp{border-top:2px solid var(--ink);padding-top:10px;position:sticky;top:12px;min-width:0;
-  align-self:start;}
-.insp h3{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-.01em;}
-.ihead{padding-bottom:12px;border-bottom:1px solid rgba(43,43,43,.3);margin-bottom:14px;}
-.tag{display:block;font-weight:700;font-size:9.5px;text-transform:uppercase;letter-spacing:.16em;
-  opacity:.6;margin-bottom:4px;}
+.insp{align-self:stretch;overflow-y:auto;padding-right:4px;}
+/* nothing selected: no heading, no paragraphs, no rule across the top */
+.insp:empty{border-top:0;}
+.ihead{padding-bottom:10px;border-bottom:1px solid rgba(43,43,43,.3);margin-bottom:12px;}
+/* the room name is the user's own words, so it is set the way they typed it */
 .name{width:100%;background:transparent;border:0;border-bottom:1px solid rgba(43,43,43,.35);
-  font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.02em;color:var(--ink);
+  font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:-.02em;color:var(--ink);
   padding:2px 0 5px;}
 .name:focus{outline:none;border-bottom-color:var(--ink);}
-.ifield{margin-bottom:16px;}
-.ifield.two{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
-.ifield label{display:block;font-weight:700;font-size:9.5px;text-transform:uppercase;
-  letter-spacing:.16em;opacity:.6;margin-bottom:6px;}
-.segs{display:flex;flex-wrap:wrap;gap:6px;}
-.hint{font-weight:600;font-size:11px;line-height:1.45;opacity:.68;margin-top:8px;}
-.hint b{font-weight:800;opacity:1;}
-.hint.arm{opacity:1;font-weight:800;background:var(--gold);padding:6px 8px;}
-.read{font-weight:700;font-size:13px;}
-.read.big{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.02em;}
 
-.len{display:flex;align-items:stretch;border:1px solid var(--ink);}
-.len input{flex:1 1 auto;min-width:0;width:100%;background:transparent;border:0;
-  font-family:var(--text);font-weight:700;font-size:13px;color:var(--ink);padding:6px 8px;text-align:center;}
-.len input:focus{outline:none;background:rgba(43,43,43,.06);}
-.len button{background:transparent;border:0;padding:0 10px;font-weight:800;font-size:14px;line-height:1;}
-.len button:hover{background:rgba(43,43,43,.1);}
+/* a button that shows what it draws */
+.seg.pic{display:inline-flex;align-items:center;gap:7px;padding:5px 10px;}
+.opmark{height:15px;width:auto;overflow:visible;flex:0 0 auto;}
+.opmark path{fill:none;stroke:currentColor;stroke-linecap:butt;}
+.omwall{stroke-width:2.6;}
+.omleaf{stroke-width:1.7;}
+.omarc{stroke-width:1.1;}
+.omsill{stroke-width:1.1;}
 
-.oplist{list-style:none;margin-top:10px;display:flex;flex-direction:column;gap:2px;}
-.oplist li{display:flex;align-items:baseline;gap:8px;cursor:pointer;padding:5px 7px;
-  font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;
+/* the list of openings reads like the furniture list on step 02: the name of
+   a thing in mixed case, its size alongside — not a row of shouting capitals */
+.oplist{list-style:none;margin-top:10px;display:flex;flex-direction:column;gap:3px;}
+.oplist li{display:flex;align-items:baseline;gap:8px;cursor:pointer;padding:6px 8px;
   border:1px solid transparent;}
 .oplist li:hover{background:rgba(43,43,43,.06);}
 .oplist li.on{border-color:var(--ink);background:var(--gold);}
-.oplist li b{font-weight:800;}
-.oplist li span{margin-left:auto;opacity:.65;}
-.oplist li.none{opacity:.5;cursor:default;}
+.oplist li b{font-weight:800;font-size:12.5px;letter-spacing:-.005em;}
+.oplist li span{margin-left:auto;font-weight:600;font-size:10px;opacity:.7;white-space:nowrap;}
+.oplist li.none{opacity:.5;cursor:default;font-weight:600;font-size:11px;}
 .opedit{margin-top:10px;padding:10px;border:1px solid rgba(43,43,43,.3);
   display:flex;flex-direction:column;gap:8px;}
 .opedit label{margin-bottom:0;}
-.opedit .hint{margin-top:0;}
-
-.ghost{background:transparent;border:1px solid rgba(43,43,43,.5);padding:7px 11px;
-  font-family:var(--text);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;}
-.ghost:hover{border-color:var(--ink);background:rgba(43,43,43,.06);}
-.ghost.sm{padding:6px 9px;font-size:9.5px;}
-.ghost.danger:hover{background:var(--ink);color:var(--cream);border-color:var(--ink);}
-.ifoot{display:flex;gap:6px;flex-wrap:wrap;padding-top:14px;border-top:1px solid rgba(43,43,43,.3);}
-
-/* ---------- footer ---------- */
-.foot{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
-  margin-top:clamp(16px,2.2vh,30px);padding-top:12px;border-top:3px solid var(--ink);}
-.sum{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
-  font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;}
-.sum b{font-family:var(--display);font-weight:800;font-size:clamp(15px,1.5vw,22px);letter-spacing:-.01em;
-  margin-left:6px;text-transform:none;}
-.sum .arrow{font-size:16px;opacity:.5;}
-.sum .delta{opacity:.7;padding-left:6px;border-left:1px solid rgba(43,43,43,.35);}
-.footr{display:flex;gap:8px;align-items:center;}
-.gonext{background:var(--ink);color:var(--cream);border:1px solid var(--ink);padding:9px 16px;
-  font-family:var(--text);font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.13em;}
-.gonext:disabled{opacity:.34;cursor:not-allowed;}
+.ifoot{display:flex;gap:6px;flex-wrap:wrap;padding-top:12px;border-top:1px solid rgba(43,43,43,.3);}
 
 /* ---------- narrow ---------- */
 @media (max-width:1180px){
   .stage{grid-template-columns:minmax(0,1fr);}
-  .insp{position:static;}
   .ifield.two{max-width:420px;}
 }
 @media (max-width:760px){
   .boards{grid-template-columns:1fr;}
-  .headband h1{font-size:clamp(34px,12vw,60px);}
 }
 `;
