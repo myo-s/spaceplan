@@ -180,12 +180,104 @@ export default function RoomLayer({
 }
 
 /**
+ * ON A PHONE, ONE SCREEN IS THE WRONG RULE.
+ *
+ * Every screen here is built to be exactly the window tall and never scroll,
+ * because a plan you have to scroll to see is a plan you cannot judge. On a
+ * desktop that is right. On a 390-pixel phone the panel stops sitting BESIDE
+ * the drawing and starts sitting UNDER it — and then the title, the sentence,
+ * the toolbar and the list eat the whole 100dvh between them and the drawing
+ * is left with twelve pixels. Measured, not guessed: twelve on Current place,
+ * zero on Plan new place.
+ *
+ * So below 860px the rule is simply switched off. The page scrolls, which is
+ * what a phone is for, and the plan is given a shape of its own instead of
+ * whatever is left over. Everything else here follows from the same idea —
+ * less chrome, fewer words, one line of navigation — because the space has to
+ * come from somewhere and it should not come out of the drawing.
+ *
+ * It is exported separately and appended LAST by every page, because the page
+ * stylesheets come after PLAN_CSS and would otherwise out-rank it.
+ */
+export const MOBILE_CSS = `
+/* short and wide: not enough height for a full-height plan either way */
+@media (max-height:620px) and (min-width:861px){
+  .wrap{height:auto;overflow:visible;}
+  .canvasbox{height:auto;}
+  .canvas{aspect-ratio:100/68;flex:0 0 auto;}
+}
+
+@media (max-width:860px){
+  .wrap{height:auto;min-height:100dvh;overflow:visible;
+    padding:10px 5vw 18px;}
+
+  /* the running head sheds its motto — it is the one decorative thing on it */
+  .rail{gap:10px;margin-bottom:14px;}
+  .rail-c{display:none;}
+  .rail-l{white-space:nowrap;}
+
+  /* THE STEP RAIL IS ONE LINE. Four names will not fit across a phone, so it
+     stops wrapping and starts sliding; the current step is the one you can
+     see, which is the one that matters. */
+  .headband{gap:10px;padding-bottom:14px;margin-bottom:16px;}
+  .headband h1{font-size:clamp(24px,7.4vw,34px);}
+  .steps{flex-wrap:nowrap;overflow-x:auto;gap:8px;width:100%;padding-bottom:2px;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch;}
+  .steps::-webkit-scrollbar{display:none;}
+  .step{font-size:8px;letter-spacing:.06em;}
+
+  /* SAY LESS. The ledes are two and three sentences of context you do not need
+     while standing up on a train — the first line is the instruction, the rest
+     is the explanation. */
+  .lede span:not(:first-child){display:none;}
+  .lede{font-size:13.5px;line-height:1.4;}
+  .toolbar{margin-bottom:14px;gap:12px;}
+  /* the two control groups fit on one row only once the words "UNITS" and
+     "VIEW" come off them — the buttons say what they are */
+  .tools{gap:14px;width:100%;}
+  .units .lbl{display:none;}
+  .zoomval{min-width:36px;}
+
+  /* the plan gets a shape instead of the leftovers */
+  .stage{display:block;flex:0 0 auto;min-height:0;}
+  .canvasbox{height:auto;flex:0 0 auto;margin-bottom:18px;}
+  .canvas{aspect-ratio:4/3;flex:0 0 auto;min-height:0;}
+
+  /* panels scroll with the page, not inside themselves */
+  .insp,.side,.detail,.piles{overflow:visible;min-height:0;max-height:none;}
+
+  /* the footer stacks: the summary is a line of reading, the buttons are a
+     row of targets, and squeezing them side by side wrapped "← Back" onto two
+     lines while the wide button still did not fit */
+  .foot{margin-top:18px;gap:12px;flex-direction:column;align-items:stretch;}
+  .sum{font-size:10px;gap:8px;}
+  .footr{width:100%;}
+  .footr .ghost{white-space:nowrap;flex:0 0 auto;}
+  .footr .gonext{flex:1 1 auto;text-align:center;white-space:nowrap;
+    font-size:10px;padding:11px 10px;letter-spacing:.1em;}
+}
+`;
+
+/**
  * The house style, shared by every step so the two screens are visibly the
  * same drawing. Each page inlines this alongside its own rules.
  */
 export const PLAN_CSS = `
 *{margin:0;padding:0;box-sizing:border-box;}
-:root{--cream:#F0EAD8;--gold:#D2BF81;--sage:#99ABA6;--ink:#2B2B2B;--floor:#EDE6D2;
+/* THE PALETTE, and the one thing worth knowing about it: the two accents are
+   now nearly OPPOSITE in hue — ochre at 40 degrees, slate at 212 — where the
+   old gold and sage were only 117 apart and read as two versions of one muted
+   mid-tone. Two accents that mean two opposite things (what you keep, what
+   goes to the market) should not have to be told apart by memory.
+
+   The ground is a warm grey rather than a neutral one, and that is not
+   decoration either: neutral grey beside a saturated ochre makes the ochre
+   look dirty. A little warmth in the paper lets the gold sit.
+
+   The three SURFACE values move together or the drawing stops reading — the
+   sheet a step lighter than the page, the floor a step darker, and the gap
+   between them is what tells you where a room stops. */
+:root{--cream:#ECE8E3;--gold:#C6A158;--sage:#87929F;--ink:#272829;--floor:#E2DDD7;
   --display:'Archivo',sans-serif;--text:'Archivo Narrow',sans-serif;}
 html,body{min-height:100%;}
 body{background:var(--cream);color:var(--ink);font-family:var(--text);
@@ -253,12 +345,12 @@ button{font:inherit;color:inherit;cursor:pointer;}
 /* anchors styled as buttons must not fall back to the browser's link blue */
 a.seg,a.ghost,a.gonext{color:var(--ink);text-decoration:none;display:inline-block;}
 a.gonext{color:var(--cream);}
-.seg:hover{background:rgba(43,43,43,.08);}
+.seg:hover{background:rgba(39,40,41,.08);}
 .seg.on{background:var(--ink);color:var(--cream);}
 .seg:disabled{opacity:.35;cursor:not-allowed;}
-.ghost{background:transparent;border:1px solid rgba(43,43,43,.5);padding:7px 11px;
+.ghost{background:transparent;border:1px solid rgba(39,40,41,.5);padding:7px 11px;
   font-family:var(--text);font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;}
-.ghost:hover{border-color:var(--ink);background:rgba(43,43,43,.06);}
+.ghost:hover{border-color:var(--ink);background:rgba(39,40,41,.06);}
 .ghost.sm{padding:6px 9px;font-size:9.5px;}
 .ghost.danger:hover{background:var(--ink);color:var(--cream);border-color:var(--ink);}
 .ghost:disabled{opacity:.35;cursor:not-allowed;}
@@ -272,42 +364,42 @@ a.gonext{color:var(--cream);}
 .zoomval{font-weight:700;font-size:10.5px;min-width:42px;text-align:center;letter-spacing:.04em;}
 
 /* ---------- canvas ---------- */
-.canvasbox{border:1px solid rgba(43,43,43,.4);overflow:hidden;
+.canvasbox{border:1px solid rgba(39,40,41,.4);overflow:hidden;
   display:flex;flex-direction:column;min-height:0;height:100%;}
 .canvas{display:block;width:100%;flex:1 1 auto;min-height:0;touch-action:none;}
-.sheet{fill:#F6F2E6;cursor:crosshair;}
+.sheet{fill:#F5F2EE;cursor:crosshair;}
 .canvas.panning .sheet{cursor:grab;}
 /* grid lines and wall strokes are hit-testable by default, and being on top
    they would swallow clicks meant for the floor or the empty sheet */
 .gridlines,.walls{pointer-events:none;}
-.gridlines{stroke:rgba(43,43,43,.13);fill:none;}
+.gridlines{stroke:rgba(39,40,41,.13);fill:none;}
 .floor{fill:var(--floor);}
 .floor.on{fill:var(--gold);}
-.walls rect{fill:none;stroke:#2B2B2B;}
-.sill{stroke:#2B2B2B;fill:none;}
-.swing{stroke:#2B2B2B;fill:none;stroke-linecap:round;}
-.labels text{text-anchor:middle;dominant-baseline:middle;fill:#2B2B2B;}
+.walls rect{fill:none;stroke:#272829;}
+.sill{stroke:#272829;fill:none;}
+.swing{stroke:#272829;fill:none;stroke-linecap:round;}
+.labels text{text-anchor:middle;dominant-baseline:middle;fill:#272829;}
 .rname{font-family:'Archivo',sans-serif;font-weight:800;}
 /* NOT uppercased: this line ends in a unit, and "420 CM" is not how anyone
    writes a centimetre. The same measurement appears in mixed case in the
    panels on every step, and it has to be the same string in both places. */
 .rdim{font-family:'Archivo Narrow',sans-serif;font-weight:700;
-  fill:#2B2B2B;opacity:.75;text-anchor:middle;dominant-baseline:middle;}
-.ghosttext{text-anchor:middle;dominant-baseline:middle;fill:rgba(43,43,43,.35);
+  fill:#272829;opacity:.75;text-anchor:middle;dominant-baseline:middle;}
+.ghosttext{text-anchor:middle;dominant-baseline:middle;fill:rgba(39,40,41,.35);
   font-family:'Archivo Narrow',sans-serif;font-weight:700;text-transform:uppercase;letter-spacing:.18em;}
-.banner{text-anchor:middle;dominant-baseline:middle;fill:#2B2B2B;
+.banner{text-anchor:middle;dominant-baseline:middle;fill:#272829;
   font-family:'Archivo Narrow',sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.14em;}
 
 .rotgrip{cursor:alias;}
-.rotgrip .rgbg{fill:var(--cream);stroke:#2B2B2B;stroke-width:1.2;vector-effect:non-scaling-stroke;}
-.rotgrip .rgarc{stroke:#2B2B2B;stroke-linecap:round;}
-.rotgrip .rgtip{fill:#2B2B2B;}
+.rotgrip .rgbg{fill:var(--cream);stroke:#272829;stroke-width:1.2;vector-effect:non-scaling-stroke;}
+.rotgrip .rgarc{stroke:#272829;stroke-linecap:round;}
+.rotgrip .rgtip{fill:#272829;}
 .rotgrip:hover .rgbg{fill:var(--gold);}
 .flipgrip{cursor:pointer;}
-.flipgrip .rgbg{fill:var(--cream);stroke:#2B2B2B;stroke-width:1.2;vector-effect:non-scaling-stroke;}
-.flipgrip .fgaxis{stroke:#2B2B2B;}
-.flipgrip .fgsolid{fill:#2B2B2B;}
-.flipgrip .fghollow{stroke:#2B2B2B;}
+.flipgrip .rgbg{fill:var(--cream);stroke:#272829;stroke-width:1.2;vector-effect:non-scaling-stroke;}
+.flipgrip .fgaxis{stroke:#272829;}
+.flipgrip .fgsolid{fill:#272829;}
+.flipgrip .fghollow{stroke:#272829;}
 .flipgrip:hover .rgbg{fill:var(--gold);}
 .flipgrip.on .rgbg{fill:var(--gold);}
 
@@ -328,17 +420,10 @@ a.gonext{color:var(--cream);}
 .len{display:flex;align-items:stretch;border:1px solid var(--ink);}
 .len input{flex:1 1 auto;min-width:0;width:100%;background:transparent;border:0;
   font-family:var(--text);font-weight:700;font-size:13px;color:var(--ink);padding:6px 8px;text-align:center;}
-.len input:focus{outline:none;background:rgba(43,43,43,.06);}
+.len input:focus{outline:none;background:rgba(39,40,41,.06);}
 .len button{background:transparent;border:0;padding:0 10px;font-weight:800;font-size:14px;line-height:1;}
-.len button:hover{background:rgba(43,43,43,.1);}
+.len button:hover{background:rgba(39,40,41,.1);}
 
-/* Below this the window simply has not got the height; let it scroll rather
-   than squeeze the drawing into a letterbox. */
-@media (max-height:620px){
-  .wrap{height:auto;overflow:visible;}
-  .canvasbox{height:auto;}
-  .canvas{aspect-ratio:100/68;flex:0 0 auto;}
-}
 
 /* ---------- footer ---------- */
 .foot{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
@@ -348,6 +433,6 @@ a.gonext{color:var(--cream);}
 .sum b{font-family:var(--display);font-weight:800;font-size:clamp(15px,1.5vw,22px);letter-spacing:-.01em;
   margin-left:6px;text-transform:none;}
 .sum .arrow{font-size:16px;opacity:.5;}
-.sum .delta{opacity:.7;padding-left:6px;border-left:1px solid rgba(43,43,43,.35);}
+.sum .delta{opacity:.7;padding-left:6px;border-left:1px solid rgba(39,40,41,.35);}
 .footr{display:flex;gap:8px;align-items:center;}
 `;

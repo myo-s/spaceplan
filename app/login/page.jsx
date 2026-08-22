@@ -1,10 +1,10 @@
-import LogIn from "../../components/LogIn";
+import Account from "../../components/Account";
 
 export const metadata = {
   title: "Log in — Space Plan",
-  description: "Keep your plan: save it to a file today, to an account soon.",
+  description: "Open the plans you have saved.",
 };
 
 export default function LoginPage() {
-  return <LogIn />;
+  return <Account mode="login" />;
 }

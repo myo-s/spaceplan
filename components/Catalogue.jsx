@@ -57,16 +57,16 @@ export default function Catalogue({ onPick, verb = "Add" }) {
 /** Shared with every screen that shows the catalogue. */
 export const CATALOGUE_CSS = `
 .folders{display:flex;flex-direction:column;}
-.folder{border-bottom:1px solid rgba(43,43,43,.14);}
+.folder{border-bottom:1px solid rgba(39,40,41,.14);}
 .foldhead{width:100%;background:transparent;border:0;display:flex;align-items:center;gap:8px;
   padding:9px 4px;text-align:left;}
-.foldhead:hover{background:rgba(43,43,43,.05);}
+.foldhead:hover{background:rgba(39,40,41,.05);}
 .foldhead b{font-weight:800;font-size:11px;text-transform:uppercase;letter-spacing:.1em;}
 .foldhead .caret{font-size:10px;width:9px;opacity:.6;}
 .foldhead .count{margin-left:auto;font-weight:700;font-size:10px;opacity:.5;}
 .folder.on .foldhead{background:var(--gold);}
 .shelf{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:8px 4px 12px;}
-.tile{background:transparent;border:1px solid rgba(43,43,43,.28);padding:7px 4px 5px;
+.tile{background:transparent;border:1px solid rgba(39,40,41,.28);padding:7px 4px 5px;
   display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;}
 .tile:hover{border-color:var(--ink);background:var(--gold);}
 .tileart{display:flex;align-items:flex-end;justify-content:center;height:38px;width:100%;}

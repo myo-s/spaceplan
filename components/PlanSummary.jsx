@@ -20,12 +20,13 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import RoomLayer, { PLAN_CSS } from "./RoomLayer";
+import RoomLayer, { MOBILE_CSS, PLAN_CSS } from "./RoomLayer";
 import { useCanvasView } from "./canvasView";
 import { fmtArea, fmtLen, homeArea, migrateRoom } from "../lib/plan";
 import { FURNITURE } from "../lib/furniture";
 import { artTransform, footprint } from "../lib/furnish";
 import { FITS, judgeAll } from "../lib/verdict";
+import { getAccount, savePlan } from "../lib/account";
 
 const STORE = "spaceplan.plan.v4";
 
@@ -54,6 +55,7 @@ const PILES = [
 export default function PlanSummary() {
   const [plan, setPlan] = useState(null);
   const [saved, setSaved] = useState(false);
+  const [account, setAccount] = useState(null);
   const v = useCanvasView();
 
   useEffect(() => {
@@ -75,6 +77,7 @@ export default function PlanSummary() {
       }
     } catch {}
     setPlan(next);
+    setAccount(getAccount());
   }, []);
 
   const rooms = plan?.homes.next.rooms || [];
@@ -118,32 +121,27 @@ export default function PlanSummary() {
   }, [rooms, v, framed]);
 
   /**
-   * There is no account yet, so "save" cannot mean what it will one day mean.
-   * It takes a real copy of the plan instead — a file you own, that survives a
-   * cleared browser and a new laptop. Signing in is the other door, and the
-   * line above the buttons is careful not to promise either one has happened.
+   * Save means save TO YOUR ACCOUNT, and if there is no account this button is
+   * the reason to make one — which is the only honest way to ask. It used to
+   * download a JSON file, which was a fine backup and a terrible answer to
+   * "where did my plan go".
    */
-  const savePlan = () => {
-    try {
-      const url = URL.createObjectURL(
-        new Blob([JSON.stringify(plan, null, 2)], { type: "application/json" })
-      );
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "space-plan.json";
-      a.click();
-      URL.revokeObjectURL(url);
-      setSaved(true);
-    } catch {}
+  const save = () => {
+    if (!account) {
+      window.location.href = "/signup";
+      return;
+    }
+    savePlan(plan);
+    setSaved(true);
   };
 
-  if (!plan) return <div style={{ minHeight: "100vh", background: "#F0EAD8" }} />;
+  if (!plan) return <div style={{ minHeight: "100vh", background: "#ECE8E3" }} />;
 
   const ready = rooms.length > 0 || owned.length > 0;
 
   return (
     <>
-      <style>{PLAN_CSS + CSS}</style>
+      <style>{PLAN_CSS + CSS + MOBILE_CSS}</style>
       <div className="wrap">
         <div className="rail">
           <a className="rail-l" href="/">← Space Plan</a>
@@ -237,11 +235,17 @@ export default function PlanSummary() {
                   take a copy or sign in. */}
               <div className="keep">
                 <p className="keepline">
-                  {saved ? "A copy is in your downloads." : "This plan lives in this browser only."}
+                  {saved
+                    ? "Saved to your account."
+                    : account
+                    ? `Signed in as ${account.email}`
+                    : "This plan lives in this browser only."}
                 </p>
                 <div className="keepbtns">
-                  <button className="seg" onClick={savePlan}>Save plan</button>
-                  <a className="seg" href="/login">Log in</a>
+                  <button className="seg" onClick={save}>Save plan</button>
+                  {account
+                    ? <a className="seg" href="/login">My plans</a>
+                    : <a className="seg" href="/login">Log in</a>}
                 </div>
               </div>
 
@@ -303,7 +307,7 @@ const CSS = `
 .stage{display:grid;grid-template-columns:minmax(0,1fr) clamp(320px,29vw,440px);
   grid-template-rows:minmax(0,1fr);gap:clamp(14px,1.8vw,26px);align-items:stretch;}
 .undercanvas{display:flex;align-items:center;justify-content:space-between;gap:12px;
-  flex-wrap:wrap;padding:8px 10px;border-top:1px solid rgba(43,43,43,.3);flex:0 0 auto;}
+  flex-wrap:wrap;padding:8px 10px;border-top:1px solid rgba(39,40,41,.3);flex:0 0 auto;}
 .tip{font-weight:600;font-size:10px;opacity:.75;}
 
 /* ONE COLUMN, one list. The four piles used to be four bordered boxes in a
@@ -334,21 +338,21 @@ const CSS = `
                    things pointing in opposite directions.
      GREY HOLLOW   gone, and not through the market */
 .swatch{width:11px;height:11px;flex:0 0 auto;background:var(--gold);
-  border:1px solid rgba(43,43,43,.45);}
+  border:1px solid rgba(39,40,41,.45);}
 .swatch.sell{background:var(--sage);border-color:var(--sage);}
-.swatch.toss{background:transparent;border:1px solid rgba(43,43,43,.4);}
+.swatch.toss{background:transparent;border:1px solid rgba(39,40,41,.4);}
 .swatch.wish{background:transparent;border:2px solid var(--sage);}
 
 .pilelist{list-style:none;}
 /* the pieces that are coming, drawn once and not touchable */
-.item{fill:#2B2B2B;}
+.item{fill:#272829;}
 .item .fcut{stroke:var(--floor);stroke-width:2.6;stroke-linecap:round;fill:none;}
-.item.wish{fill:none;stroke:#5C6F6A;stroke-width:3.5;stroke-linejoin:round;}
+.item.wish{fill:none;stroke:#4F5966;stroke-width:3.5;stroke-linejoin:round;}
 .tagbg{fill:var(--cream);}
-.tagtx{fill:#2B2B2B;font-family:'Archivo Narrow',sans-serif;font-weight:800;
+.tagtx{fill:#272829;font-family:'Archivo Narrow',sans-serif;font-weight:800;
   dominant-baseline:middle;}
 .pilelist li{display:flex;align-items:baseline;gap:8px;padding:6px 2px;
-  border-bottom:1px solid rgba(43,43,43,.14);}
+  border-bottom:1px solid rgba(39,40,41,.14);}
 /* every row indented to clear its heading's swatch, so the names line up with
    the words above them and not with the squares */
 .pilelist li{padding-left:19px;}

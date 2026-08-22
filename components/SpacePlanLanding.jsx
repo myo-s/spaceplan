@@ -15,7 +15,7 @@ export default function SpacePlanLanding() {
     <>
       <style>{`
   *{margin:0;padding:0;box-sizing:border-box;}
-  :root{--cream:#F0EAD8;--gold:#D2BF81;--sage:#99ABA6;--ink:#2B2B2B;
+  :root{--cream:#ECE8E3;--gold:#C6A158;--sage:#87929F;--ink:#272829;
     --display:'Archivo',sans-serif;   /* masthead, headings, deck */
     --text:'Archivo Narrow',sans-serif; /* body, rail, captions, labels */
   }
@@ -103,7 +103,7 @@ export default function SpacePlanLanding() {
   .cutfill{fill:var(--plate);stroke:none;}
 
   /* caption under the plate — label + value, like a magazine figure */
-  .cap{margin-top:14px;padding-top:10px;border-top:1px solid rgba(43,43,43,.32);
+  .cap{margin-top:14px;padding-top:10px;border-top:1px solid rgba(39,40,41,.32);
     font-weight:600;font-size:clamp(8.5px,.74vw,10.5px);text-transform:uppercase;letter-spacing:.13em;
     display:flex;gap:10px;align-items:baseline;}
   .cap b{font-weight:800;letter-spacing:.05em;flex:0 0 auto;}
@@ -149,7 +149,7 @@ export default function SpacePlanLanding() {
             <svg className="headline-svg" viewBox="0 0 1000 197" role="img" aria-label="Space Plan">
               <text x="0" y="152" textLength="1000" lengthAdjust="spacing"
                     fontFamily="Archivo, sans-serif" fontWeight="800" fontSize="188"
-                    fill="#2B2B2B">Space Plan</text>
+                    fill="#272829">Space Plan</text>
             </svg>
           </div>
       
@@ -166,9 +166,9 @@ export default function SpacePlanLanding() {
                 <li>Arrive knowing where everything goes</li>
               </ul>
               <div className="art">
-                <svg viewBox="-4 -4 838 388" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Current plan and new plan"><path fillRule="evenodd" fill="#2B2B2B" d="M0 0 H430 V380 H0 Z M9 9 V371 H421 V9 Z"/><rect className="cutfill" x="150" y="0" width="150" height="9"/><rect fill="#2B2B2B" x="150" y="3.0" width="150" height="3"/><rect className="cutfill" x="66" y="371" width="78" height="9"/><g fill="#2B2B2B"><g transform="translate(40 30)"><rect x="0" y="0" width="200" height="88" rx="7"/><g className="cut"><path d="M26 16 V88 M174 16 V88 M26 16 H174 M75 18 V88 M125 18 V88"/></g></g><circle cx="300" cy="244" r="42"/><circle className="cutfill" cx="300" cy="244" r="35"/><circle cx="300" cy="244" r="29"/><rect x="282" y="184" width="36" height="13" rx="4"/><rect x="282" y="291" width="36" height="13" rx="4"/><rect x="240" y="226" width="13" height="36" rx="4"/><rect x="347" y="226" width="13" height="36" rx="4"/><rect x="388" y="150" width="33" height="120" rx="4"/></g><g className="swing"><path d="M66 371 v-78"/><path d="M66 293 A78 78 0 0 1 144 371"/></g><path fillRule="evenodd" fill="#2B2B2B" d="M500 0 H830 V380 H500 Z M509 9 V371 H821 V9 Z"/><rect className="cutfill" x="620" y="0" width="120" height="9"/><rect fill="#2B2B2B" x="620" y="3.0" width="120" height="3"/><rect className="cutfill" x="556" y="371" width="74" height="9"/><g fill="#2B2B2B"><g transform="translate(530 30)"><rect x="0" y="0" width="190" height="84" rx="7"/><g className="cut"><path d="M25 16 V84 M165 16 V84 M25 16 H165 M72 18 V84 M118 18 V84"/></g></g><circle cx="648" cy="226" r="36"/><circle className="cutfill" cx="648" cy="226" r="29"/><circle cx="648" cy="226" r="23"/><rect x="630" y="172" width="36" height="13" rx="4"/><rect x="630" y="267" width="36" height="13" rx="4"/><rect x="594" y="208" width="13" height="36" rx="4"/><rect x="689" y="208" width="13" height="36" rx="4"/><rect x="788" y="150" width="33" height="110" rx="4"/></g><g className="swing"><path d="M556 371 v-74"/><path d="M556 297 A74 74 0 0 1 630 371"/></g><g fill="none" stroke="#2B2B2B" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"><path d="M450 190 H480 M469 178 L481 190 L469 202"/></g></svg>
+                <svg viewBox="-4 -4 838 388" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Current place and new place"><path fillRule="evenodd" fill="#272829" d="M0 0 H430 V380 H0 Z M9 9 V371 H421 V9 Z"/><rect className="cutfill" x="150" y="0" width="150" height="9"/><rect fill="#272829" x="150" y="3.0" width="150" height="3"/><rect className="cutfill" x="66" y="371" width="78" height="9"/><g fill="#272829"><g transform="translate(40 30)"><rect x="0" y="0" width="200" height="88" rx="7"/><g className="cut"><path d="M26 16 V88 M174 16 V88 M26 16 H174 M75 18 V88 M125 18 V88"/></g></g><circle cx="300" cy="244" r="42"/><circle className="cutfill" cx="300" cy="244" r="35"/><circle cx="300" cy="244" r="29"/><rect x="282" y="184" width="36" height="13" rx="4"/><rect x="282" y="291" width="36" height="13" rx="4"/><rect x="240" y="226" width="13" height="36" rx="4"/><rect x="347" y="226" width="13" height="36" rx="4"/><rect x="388" y="150" width="33" height="120" rx="4"/></g><g className="swing"><path d="M66 371 v-78"/><path d="M66 293 A78 78 0 0 1 144 371"/></g><path fillRule="evenodd" fill="#272829" d="M500 0 H830 V380 H500 Z M509 9 V371 H821 V9 Z"/><rect className="cutfill" x="620" y="0" width="120" height="9"/><rect fill="#272829" x="620" y="3.0" width="120" height="3"/><rect className="cutfill" x="556" y="371" width="74" height="9"/><g fill="#272829"><g transform="translate(530 30)"><rect x="0" y="0" width="190" height="84" rx="7"/><g className="cut"><path d="M25 16 V84 M165 16 V84 M25 16 H165 M72 18 V84 M118 18 V84"/></g></g><circle cx="648" cy="226" r="36"/><circle className="cutfill" cx="648" cy="226" r="29"/><circle cx="648" cy="226" r="23"/><rect x="630" y="172" width="36" height="13" rx="4"/><rect x="630" y="267" width="36" height="13" rx="4"/><rect x="594" y="208" width="13" height="36" rx="4"/><rect x="689" y="208" width="13" height="36" rx="4"/><rect x="788" y="150" width="33" height="110" rx="4"/></g><g className="swing"><path d="M556 371 v-74"/><path d="M556 297 A74 74 0 0 1 630 371"/></g><g fill="none" stroke="#272829" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round"><path d="M450 190 H480 M469 178 L481 190 L469 202"/></g></svg>
               </div>
-              <div className="cap"><b>Fig. 01</b><span>Current plan &#8594; New plan</span><b className="enter">Enter &#8594;</b></div>
+              <div className="cap"><b>Fig. 01</b><span>Current place &#8594; New place</span><b className="enter">Enter &#8594;</b></div>
             </a>
       
             <a className="card sage" href="/marketplace">
@@ -183,23 +183,23 @@ export default function SpacePlanLanding() {
                 <li>Compare prices before you commit</li>
               </ul>
               <div className="art">
-                <div className="plate"><div className="prow"><figure style={{flex:'45 1 0'}}><svg viewBox="0 -150 45 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Floor lamp"><g fill="#2B2B2B">
+                <div className="plate"><div className="prow"><figure style={{flex:'45 1 0'}}><svg viewBox="0 -150 45 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Floor lamp"><g fill="#272829">
             <path d="M9 -150 H36 L45 -112 H0 Z"/>
             <rect x="19" y="-112" width="7" height="12"/>
             <path d="M14 -100 H31 L26 -58 H19 Z"/>
             <path d="M19 -58 H26 L35 -13 H10 Z"/>
-            <rect x="7" y="-13" width="31" height="13" rx="3"/></g></svg></figure><div style={{flex:'67.5 1 0'}} aria-hidden="true"></div><figure style={{flex:'200 1 0'}}><svg viewBox="0 -150 200 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sofa"><g fill="#2B2B2B">
+            <rect x="7" y="-13" width="31" height="13" rx="3"/></g></svg></figure><div style={{flex:'67.5 1 0'}} aria-hidden="true"></div><figure style={{flex:'200 1 0'}}><svg viewBox="0 -150 200 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sofa"><g fill="#272829">
             <rect x="0" y="-80" width="200" height="68" rx="13"/>
             <rect x="30" y="-12" width="12" height="12"/>
             <rect x="158" y="-12" width="12" height="12"/>
-            <g className="cut"><path d="M27 -58 V-14 M173 -58 V-14 M27 -44 H173 M75 -44 V-14 M125 -44 V-14"/></g></g></svg></figure><div style={{flex:'67.5 1 0'}} aria-hidden="true"></div><figure style={{flex:'160 1 0'}}><svg viewBox="0 -150 160 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TV and stand"><g fill="#2B2B2B">
+            <g className="cut"><path d="M27 -58 V-14 M173 -58 V-14 M27 -44 H173 M75 -44 V-14 M125 -44 V-14"/></g></g></svg></figure><div style={{flex:'67.5 1 0'}} aria-hidden="true"></div><figure style={{flex:'160 1 0'}}><svg viewBox="0 -150 160 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="TV and stand"><g fill="#272829">
             <rect x="30" y="-115" width="100" height="58" rx="3"/>
             <rect x="75" y="-57" width="10" height="9"/>
             <rect x="58" y="-48" width="44" height="6" rx="2"/>
             <rect x="0" y="-42" width="160" height="34" rx="3"/>
             <rect x="12" y="-8" width="11" height="8"/>
             <rect x="137" y="-8" width="11" height="8"/>
-            <g className="cut"><path d="M4 -25 H156 M80 -42 V-25 M60 -34 H72 M88 -34 H100"/></g></g></svg></figure></div><div className="prow"><figure style={{flex:'240 1 0'}}><svg viewBox="0 -85 240 85" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dining set"><g fill="#2B2B2B">
+            <g className="cut"><path d="M4 -25 H156 M80 -42 V-25 M60 -34 H72 M88 -34 H100"/></g></g></svg></figure></div><div className="prow"><figure style={{flex:'240 1 0'}}><svg viewBox="0 -85 240 85" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dining set"><g fill="#272829">
             <rect x="0" y="-85" width="28" height="11" rx="4"/>
             <rect x="0" y="-85" width="11" height="45"/>
             <rect x="0" y="-45" width="44" height="10" rx="3"/>
@@ -212,12 +212,12 @@ export default function SpacePlanLanding() {
             <rect x="229" y="-85" width="11" height="45"/>
             <rect x="196" y="-45" width="44" height="10" rx="3"/>
             <rect x="196" y="-35" width="10" height="35"/>
-            <rect x="229" y="-35" width="11" height="35"/></g></svg></figure><div style={{flex:'45 1 0'}} aria-hidden="true"></div><figure style={{flex:'100 1 0'}}><svg viewBox="0 -85 100 85" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dresser"><g fill="#2B2B2B">
+            <rect x="229" y="-35" width="11" height="35"/></g></svg></figure><div style={{flex:'45 1 0'}} aria-hidden="true"></div><figure style={{flex:'100 1 0'}}><svg viewBox="0 -85 100 85" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Dresser"><g fill="#272829">
             <rect x="0" y="-80" width="100" height="66" rx="3"/>
             <rect x="6" y="-14" width="10" height="14"/>
             <rect x="84" y="-14" width="10" height="14"/>
             <g className="cut"><path d="M4 -58 H96 M4 -36 H96 M50 -79 V-59"/>
-              <path d="M22 -68 H34 M66 -68 H78 M40 -47 H60 M40 -25 H60"/></g></g></svg></figure><div style={{flex:'45 1 0'}} aria-hidden="true"></div><figure style={{flex:'110 1 0'}}><svg viewBox="0 -85 110 85" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Coffee table"><g fill="#2B2B2B">
+              <path d="M22 -68 H34 M66 -68 H78 M40 -47 H60 M40 -25 H60"/></g></g></svg></figure><div style={{flex:'45 1 0'}} aria-hidden="true"></div><figure style={{flex:'110 1 0'}}><svg viewBox="0 -85 110 85" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Coffee table"><g fill="#272829">
             <rect x="0" y="-40" width="110" height="8" rx="3"/>
             <rect x="7" y="-32" width="9" height="32"/>
             <rect x="94" y="-32" width="9" height="32"/>

@@ -42,7 +42,7 @@
  */
 
 import { useEffect, useMemo, useState } from "react";
-import RoomLayer, { PLAN_CSS } from "./RoomLayer";
+import RoomLayer, { MOBILE_CSS, PLAN_CSS } from "./RoomLayer";
 import { FlipGrip, RotateGrip, ViewTools, useCanvasView } from "./canvasView";
 import { FURNITURE } from "../lib/furniture";
 import Catalogue, { CATALOGUE_CSS } from "./Catalogue";
@@ -284,7 +284,7 @@ export default function Verdict() {
     return () => window.removeEventListener("keydown", key);
   }, [selId, all]);
 
-  if (!plan) return <div style={{ minHeight: "100vh", background: "#F0EAD8" }} />;
+  if (!plan) return <div style={{ minHeight: "100vh", background: "#ECE8E3" }} />;
 
   /** What this piece is, in one word — swatch, sort order and tag all agree. */
   const stateOf = (it) => {
@@ -304,7 +304,7 @@ export default function Verdict() {
 
   return (
     <>
-      <style>{PLAN_CSS + CATALOGUE_CSS + CSS}</style>
+      <style>{PLAN_CSS + CATALOGUE_CSS + CSS + MOBILE_CSS}</style>
       <div className="wrap">
         <div className="rail">
           <a className="rail-l" href="/">← Space Plan</a>
@@ -352,8 +352,8 @@ export default function Verdict() {
                 nothing tells you that the list is a decision. */}
             <div className="toolbar">
               <p className="lede">
-                <span>Everything you own has been moved into the new place.</span>
-                <span>Keep it, sell it, let it go — or plan something new in the space it leaves.</span>
+                <span>Everything you own is in the new place — keep it, sell it, or let it go.</span>
+                <span>Or plan something new in the space it leaves.</span>
               </p>
             </div>
 
@@ -634,27 +634,27 @@ const CSS = `
 .stage{display:grid;grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:minmax(0,1fr);
   gap:clamp(14px,1.8vw,26px);align-items:stretch;min-height:0;}
 .undercanvas{display:flex;align-items:center;justify-content:space-between;gap:12px;
-  flex-wrap:wrap;padding:8px 10px;border-top:1px solid rgba(43,43,43,.3);}
+  flex-wrap:wrap;padding:8px 10px;border-top:1px solid rgba(39,40,41,.3);}
 /* a sentence you read, so no caps — the same treatment the measurements get
    on step 01 and the sizes get on step 02 */
 .tip{font-weight:600;font-size:10px;opacity:.75;display:flex;align-items:center;gap:5px;}
 .key{width:11px;height:11px;display:inline-block;}
-.key.ink{background:#2B2B2B;}
-.key.hollow{background:transparent;border:2px solid #5C6F6A;}
+.key.ink{background:#272829;}
+.key.hollow{background:transparent;border:2px solid #4F5966;}
 
-.item{fill:#2B2B2B;cursor:move;}
-.item.never{fill:#99ABA6;}
-.item.move{fill:#B9A97A;}
+.item{fill:#272829;cursor:move;}
+.item.never{fill:#87929F;}
+.item.move{fill:#AE9159;}
 /* not yours yet: hollow, but drawn with the SAME solid line as everything
    else. The dash was doing two jobs at once — "not yours" and "not sure" —
    and only one of them was true. */
-.item.wish{fill:none;stroke:#5C6F6A;stroke-width:3.5;stroke-linejoin:round;}
+.item.wish{fill:none;stroke:#4F5966;stroke-width:3.5;stroke-linejoin:round;}
 .item.wish .fcut{display:none;}
 .item .fcut{stroke:var(--floor);stroke-width:2.6;stroke-linecap:round;fill:none;}
-.halo{fill:none;stroke:#2B2B2B;stroke-dasharray:7 5;}
-.clash{fill:rgba(153,171,166,.55);}
+.halo{fill:none;stroke:#272829;stroke-dasharray:7 5;}
+.clash{fill:rgba(135,146,159,.55);}
 .tagbg{fill:var(--cream);}
-.tagtx{fill:#2B2B2B;font-family:'Archivo Narrow',sans-serif;font-weight:800;
+.tagtx{fill:#272829;font-family:'Archivo Narrow',sans-serif;font-weight:800;
   dominant-baseline:middle;}
 
 /* align-self:stretch undoes the shared sheet's align-self:start — without it
@@ -673,9 +673,9 @@ const CSS = `
 /* one row per piece; a rule appears wherever the pile changes, which is all
    the grouping five headings used to do */
 .rows{list-style:none;}
-.row{border-bottom:1px solid rgba(43,43,43,.14);}
-.row.rule{border-top:1px solid rgba(43,43,43,.5);}
-.row.on{background:rgba(43,43,43,.05);}
+.row{border-bottom:1px solid rgba(39,40,41,.14);}
+.row.rule{border-top:1px solid rgba(39,40,41,.5);}
+.row.on{background:rgba(39,40,41,.05);}
 /* The piece you are planning, while you are planning it — in the Moving In
    gold, the same colour the open catalogue folder below it already wears, so
    the whole block highlights in one voice.
@@ -686,10 +686,10 @@ const CSS = `
 .row.wish.on{background:transparent;}
 .row.wish.on .rhead.open{background:var(--sage);}
 .row.wish.on .rhead.open .size{opacity:.9;}
-.row.wish.on .rename{border-bottom:1px solid rgba(43,43,43,.45);}
+.row.wish.on .rename{border-bottom:1px solid rgba(39,40,41,.45);}
 .rhead{width:100%;background:transparent;border:0;display:flex;align-items:center;gap:9px;
   padding:9px 4px;text-align:left;}
-.row:not(.on) .rhead:hover{background:rgba(43,43,43,.05);}
+.row:not(.on) .rhead:hover{background:rgba(39,40,41,.05);}
 .rhead b{font-weight:800;font-size:12.5px;letter-spacing:-.005em;
   min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .rhead .size{margin-left:auto;flex:0 0 auto;font-weight:600;font-size:10px;opacity:.7;
@@ -700,10 +700,10 @@ const CSS = `
    hollow for gone. */
 .swatch{width:11px;height:11px;flex:0 0 auto;background:var(--ink);}
 .swatch.problem{background:var(--sage);}
-.swatch.move{background:#B9A97A;}
-.swatch.keep{background:var(--gold);border:1px solid rgba(43,43,43,.45);}
+.swatch.move{background:#AE9159;}
+.swatch.keep{background:var(--gold);border:1px solid rgba(39,40,41,.45);}
 .swatch.sell{background:var(--sage);}
-.swatch.toss{background:transparent;border:1px solid rgba(43,43,43,.4);}
+.swatch.toss{background:transparent;border:1px solid rgba(39,40,41,.4);}
 .swatch.wish{background:transparent;border:2px solid var(--sage);}
 .rbody{padding:0 4px 12px;display:flex;flex-direction:column;gap:9px;}
 .why{font-weight:700;font-size:12px;line-height:1.4;}
@@ -714,7 +714,7 @@ const CSS = `
 /* The rename field had no rule of its own here, so it fell back to the
    browser's default input: a white box with an inset border, sitting on the
    page like a form control someone forgot to style. */
-.rename{width:100%;background:transparent;border:0;border-bottom:1px solid rgba(43,43,43,.4);
+.rename{width:100%;background:transparent;border:0;border-bottom:1px solid rgba(39,40,41,.4);
   font-family:var(--text);font-weight:800;color:var(--ink);padding:2px 0 3px;}
 .rename:focus{outline:none;border-bottom-color:var(--ink);}
 .rhead.open .rename{flex:1 1 auto;min-width:0;font-size:12.5px;letter-spacing:-.005em;
@@ -734,7 +734,7 @@ const CSS = `
 .cmp{display:flex;flex-direction:column;gap:3px;}
 .cmprow{display:grid;grid-template-columns:74px 1fr 56px;align-items:center;gap:7px;}
 .cmplab{font-weight:700;font-size:8.5px;text-transform:uppercase;letter-spacing:.1em;opacity:.6;}
-.cmpbar{height:9px;background:rgba(43,43,43,.1);display:block;}
+.cmpbar{height:9px;background:rgba(39,40,41,.1);display:block;}
 .cmpfill{display:block;height:100%;}
 .cmpfill.need{background:var(--sage);}
 .cmpfill.have{background:var(--ink);}

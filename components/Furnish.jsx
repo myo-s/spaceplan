@@ -18,7 +18,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import RoomLayer, { PLAN_CSS } from "./RoomLayer";
+import RoomLayer, { MOBILE_CSS, PLAN_CSS } from "./RoomLayer";
 import { FURNITURE } from "../lib/furniture";
 import Catalogue, { CATALOGUE_CSS } from "./Catalogue";
 import { FlipGrip, RotateGrip, ViewTools, useCanvasView } from "./canvasView";
@@ -218,7 +218,7 @@ export default function Furnish() {
     return () => window.removeEventListener("keydown", key);
   }, [selId, items, setItem]);
 
-  if (!plan) return <div style={{ minHeight: "100vh", background: "#F0EAD8" }} />;
+  if (!plan) return <div style={{ minHeight: "100vh", background: "#ECE8E3" }} />;
 
   const issues = new Map(items.map((it) => [it.id, itemIssue(it, rooms, items)]));
   const count = tally(items, rooms);
@@ -227,7 +227,7 @@ export default function Furnish() {
 
   return (
     <>
-      <style>{PLAN_CSS + CATALOGUE_CSS + CSS}</style>
+      <style>{PLAN_CSS + CATALOGUE_CSS + CSS + MOBILE_CSS}</style>
       <div className="wrap">
         <div className="rail">
           <a className="rail-l" href="/">← Space Plan</a>
@@ -544,7 +544,7 @@ const CSS = `
    trimmed with an ellipsis rather than folded up. */
 .invhead{width:100%;background:transparent;border:0;display:flex;flex-wrap:wrap;
   align-items:baseline;gap:4px 8px;padding:6px 8px;text-align:left;}
-.invrow:not(.on) .invhead:hover{background:rgba(43,43,43,.06);}
+.invrow:not(.on) .invhead:hover{background:rgba(39,40,41,.06);}
 .invhead b{font-weight:800;font-size:12.5px;letter-spacing:-.005em;
   min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .invhead .size{margin-left:auto;flex:0 0 auto;font-weight:600;font-size:10px;opacity:.7;
@@ -569,21 +569,21 @@ const CSS = `
   font-family:var(--text);font-weight:800;}
 .invbody label{display:block;font-weight:700;font-size:9px;text-transform:uppercase;
   letter-spacing:.16em;opacity:.6;margin-bottom:4px;}
-.rename{width:100%;background:transparent;border:0;border-bottom:1px solid rgba(43,43,43,.4);
+.rename{width:100%;background:transparent;border:0;border-bottom:1px solid rgba(39,40,41,.4);
   font-family:var(--display);font-weight:800;font-size:15px;color:var(--ink);padding:2px 0 4px;}
 .rename:focus{outline:none;border-bottom-color:var(--ink);}
 .sagebox{border-left:4px solid var(--sage);padding-left:10px;}
 
 /* ---------- furniture on the plan ---------- */
-.item{fill:#2B2B2B;cursor:move;}
-.item.bad{fill:#99ABA6;}
+.item{fill:#272829;cursor:move;}
+.item.bad{fill:#87929F;}
 .item .fcut{stroke:var(--floor);stroke-width:2.6;stroke-linecap:round;fill:none;}
 .item.bad .fcut{stroke:var(--floor);}
-.halo{fill:none;stroke:#2B2B2B;stroke-dasharray:7 5;}
+.halo{fill:none;stroke:#272829;stroke-dasharray:7 5;}
 .tagbg{fill:var(--cream);}
-.tagtx{fill:#2B2B2B;font-family:'Archivo Narrow',sans-serif;font-weight:800;
+.tagtx{fill:#272829;font-family:'Archivo Narrow',sans-serif;font-weight:800;
   dominant-baseline:middle;}
-.sum .sage{color:#5C6F6A;}
+.sum .sage{color:#4F5966;}
 
 .blank{border-top:2px solid var(--ink);padding:40px 0;max-width:52ch;}
 .blank h2{font-family:var(--display);font-weight:800;font-size:26px;letter-spacing:-.02em;margin-bottom:8px;}

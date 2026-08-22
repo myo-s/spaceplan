@@ -21,7 +21,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import RoomLayer, { PLAN_CSS } from "./RoomLayer";
+import RoomLayer, { MOBILE_CSS, PLAN_CSS } from "./RoomLayer";
 import {
   WALL, GRID, MIN_SIDE, WALL_NAMES,
   allParts, boxOf, clamp, collides, doorSwingPath, fmtArea, fmtLen, homeArea,
@@ -409,7 +409,7 @@ export default function DrawRoom() {
 
   return (
     <>
-      <style>{PLAN_CSS + CSS}</style>
+      <style>{PLAN_CSS + CSS + MOBILE_CSS}</style>
       <div className="wrap">
         <div className="rail">
           <a className="rail-l" href="/">← Space Plan</a>
@@ -1065,7 +1065,7 @@ const CSS = `
   min-width:0;min-height:0;}
 .home{min-width:0;display:flex;flex-direction:column;min-height:0;}
 .bhead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex:0 0 auto;
-  border-top:2px solid var(--ink);padding:8px 0;border-bottom:1px solid rgba(43,43,43,.3);
+  border-top:2px solid var(--ink);padding:8px 0;border-bottom:1px solid rgba(39,40,41,.3);
   margin-bottom:8px;}
 .bhead h2{font-family:var(--display);font-weight:800;letter-spacing:-.02em;line-height:1;
   font-size:clamp(17px,1.6vw,24px);}
@@ -1086,28 +1086,28 @@ const CSS = `
 
 /* ---------- drawing a room ---------- */
 .floor{cursor:move;}
-.draft{fill:rgba(210,191,129,.4);stroke:#2B2B2B;stroke-dasharray:8 6;}
-.draft.bad{fill:rgba(43,43,43,.14);stroke-dasharray:3 5;}
+.draft{fill:rgba(210,191,129,.4);stroke:#272829;stroke-dasharray:8 6;}
+.draft.bad{fill:rgba(39,40,41,.14);stroke-dasharray:3 5;}
 .canvas.placing .sheet,.canvas.placing .floor{cursor:copy;}
 .pickwall rect{fill:none;stroke:rgba(210,191,129,.85);}
 .ghostgap{fill:var(--gold);}
-.ghostline{stroke:#2B2B2B;stroke-linecap:round;}
+.ghostline{stroke:#272829;stroke-linecap:round;}
 .h{cursor:grab;}
-.h.grip{fill:var(--cream);stroke:#2B2B2B;stroke-width:1.4;vector-effect:non-scaling-stroke;}
+.h.grip{fill:var(--cream);stroke:#272829;stroke-width:1.4;vector-effect:non-scaling-stroke;}
 .g-tl,.g-br{cursor:nwse-resize;}
 .g-tr,.g-bl{cursor:nesw-resize;}
 .g-t,.g-b{cursor:ns-resize;}
 .g-l,.g-r{cursor:ew-resize;}
-.h.op{fill:#2B2B2B;stroke:var(--cream);stroke-width:1.6;vector-effect:non-scaling-stroke;}
-.h.op.sel{fill:#fff;stroke:#2B2B2B;}
+.h.op{fill:#272829;stroke:var(--cream);stroke-width:1.6;vector-effect:non-scaling-stroke;}
+.h.op.sel{fill:#fff;stroke:#272829;}
 
 /* ---------- inspector ---------- */
 .insp{align-self:stretch;overflow-y:auto;padding-right:4px;}
 /* nothing selected: no heading, no paragraphs, no rule across the top */
 .insp:empty{border-top:0;}
-.ihead{padding-bottom:10px;border-bottom:1px solid rgba(43,43,43,.3);margin-bottom:12px;}
+.ihead{padding-bottom:10px;border-bottom:1px solid rgba(39,40,41,.3);margin-bottom:12px;}
 /* the room name is the user's own words, so it is set the way they typed it */
-.name{width:100%;background:transparent;border:0;border-bottom:1px solid rgba(43,43,43,.35);
+.name{width:100%;background:transparent;border:0;border-bottom:1px solid rgba(39,40,41,.35);
   font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:-.02em;color:var(--ink);
   padding:2px 0 5px;}
 .name:focus{outline:none;border-bottom-color:var(--ink);}
@@ -1126,15 +1126,15 @@ const CSS = `
 .oplist{list-style:none;margin-top:10px;display:flex;flex-direction:column;gap:3px;}
 .oplist li{display:flex;align-items:baseline;gap:8px;cursor:pointer;padding:6px 8px;
   border:1px solid transparent;}
-.oplist li:hover{background:rgba(43,43,43,.06);}
+.oplist li:hover{background:rgba(39,40,41,.06);}
 .oplist li.on{border-color:var(--ink);background:var(--gold);}
 .oplist li b{font-weight:800;font-size:12.5px;letter-spacing:-.005em;}
 .oplist li span{margin-left:auto;font-weight:600;font-size:10px;opacity:.7;white-space:nowrap;}
 .oplist li.none{opacity:.5;cursor:default;font-weight:600;font-size:11px;}
-.opedit{margin-top:10px;padding:10px;border:1px solid rgba(43,43,43,.3);
+.opedit{margin-top:10px;padding:10px;border:1px solid rgba(39,40,41,.3);
   display:flex;flex-direction:column;gap:8px;}
 .opedit label{margin-bottom:0;}
-.ifoot{display:flex;gap:6px;flex-wrap:wrap;padding-top:12px;border-top:1px solid rgba(43,43,43,.3);}
+.ifoot{display:flex;gap:6px;flex-wrap:wrap;padding-top:12px;border-top:1px solid rgba(39,40,41,.3);}
 
 /* ---------- narrow ---------- */
 @media (max-width:1180px){
